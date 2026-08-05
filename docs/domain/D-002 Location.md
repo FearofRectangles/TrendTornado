@@ -1,5 +1,14 @@
 # D-002 - Location
 
+Location
+├── locationCode
+├── zone       ← tecken 1–2
+├── bay        ← tecken 3–5
+├── shelf      ← tecken 6–7
+├── position   ← tecken 8–9
+├── temperatureZone
+└── ergonomicLevel
+
 ## Syfte
 Representerar en fysisk plockplats i lagret.
 En Location beskriver endast själva platsen.

@@ -34,6 +34,9 @@ Rekommendation - En rekommendation som skapats av TrendTornado
 D-001 Article
 D-002 Location
 D-003 Placement
+D-004 Strategy
+
+
 D-004 Warehouse
 D-005 Zone
 D-006 Order

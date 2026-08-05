@@ -1,29 +1,54 @@
+import { getTemperatureZoneFromZoneCode } from "../zone/ZoneRules.js";
+
 export class Location {
+  static LOCATION_CODE_LENGTH = 9;
+
   constructor({
     locationCode,
-    pickSequence,
-    temperatureZone,
-    shelfLevel,
+    ergonomicLevel = null,
   }) {
-    if (!locationCode) {
-      throw new Error("Location requires a location code.");
-    }
-
-    if (!Number.isInteger(pickSequence) || pickSequence < 1) {
-      throw new Error("Pick sequence must be a positive integer.");
-    }
-
-    if (!temperatureZone) {
-      throw new Error("Location requires a temperature zone.");
-    }
-
-    if (!shelfLevel) {
-      throw new Error("Location requires a shelf level.");
-    }
+    this.#assertValidLocationCode(locationCode);
 
     this.locationCode = locationCode;
-    this.pickSequence = pickSequence;
-    this.temperatureZone = temperatureZone;
-    this.shelfLevel = shelfLevel;
+    this.ergonomicLevel = ergonomicLevel;
+  }
+
+  get zone() {
+    return this.locationCode.slice(0, 2);
+  }
+
+  get bay() {
+    return this.locationCode.slice(2, 5);
+  }
+
+  get shelf() {
+    return this.locationCode.slice(5, 7);
+  }
+
+  get position() {
+    return this.locationCode.slice(7, 9);
+  }
+
+  get temperatureZone() {
+    return getTemperatureZoneFromZoneCode(this.zone);
+  }
+
+  comesBefore(otherLocation) {
+    if (!(otherLocation instanceof Location)) {
+      throw new TypeError("Expected another Location.");
+    }
+
+    return this.locationCode.localeCompare(otherLocation.locationCode) < 0;
+  }
+
+  #assertValidLocationCode(locationCode) {
+    if (
+      typeof locationCode !== "string" ||
+      !/^\d{9}$/.test(locationCode)
+    ) {
+      throw new Error(
+        "Location code must be a 9-digit string in the format XXYYYZZVV.",
+      );
+    }
   }
 }
