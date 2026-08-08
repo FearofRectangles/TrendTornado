@@ -5,6 +5,7 @@ import { Article } from "./article/Article.js";
 import { Location } from "./location/Location.js";
 import { Placement } from "./placement/Placement.js";
 import { TemperatureZone } from "../shared/TemperatureZone.js";
+import { LocationPurpose } from "../shared/LocationPurpose.js";
 
 test("creates a valid placement", () => {
   const article = new Article({
@@ -16,6 +17,7 @@ test("creates a valid placement", () => {
 
   const location = new Location({
     locationCode: "010250201",
+    purpose: LocationPurpose.PICK,
   });
 
   const placement = new Placement({
@@ -37,6 +39,7 @@ test("rejects a placement with mismatching temperature zones", () => {
 
   const dryLocation = new Location({
     locationCode: "010250201",
+    purpose: LocationPurpose.PICK,
   });
 
   assert.throws(
@@ -52,6 +55,7 @@ test("rejects a placement with mismatching temperature zones", () => {
 test("rejects an invalid article", () => {
   const location = new Location({
     locationCode: "010250201",
+    purpose: LocationPurpose.PICK,
   });
 
   assert.throws(

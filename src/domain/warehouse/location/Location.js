@@ -1,15 +1,17 @@
+import { LocationPurpose } from "../../shared/LocationPurpose.js";
 import { getTemperatureZoneFromZoneCode } from "../zone/ZoneRules.js";
 
 export class Location {
-  static LOCATION_CODE_LENGTH = 9;
-
   constructor({
     locationCode,
+    purpose,
     ergonomicLevel = null,
   }) {
     this.#assertValidLocationCode(locationCode);
+    this.#assertValidPurpose(purpose);
 
     this.locationCode = locationCode;
+    this.purpose = purpose;
     this.ergonomicLevel = ergonomicLevel;
   }
 
@@ -33,6 +35,10 @@ export class Location {
     return getTemperatureZoneFromZoneCode(this.zone);
   }
 
+  get isPickLocation() {
+    return this.purpose === LocationPurpose.PICK;
+  }
+
   comesBefore(otherLocation) {
     if (!(otherLocation instanceof Location)) {
       throw new TypeError("Expected another Location.");
@@ -48,6 +54,16 @@ export class Location {
     ) {
       throw new Error(
         "Location code must be a 9-digit string in the format XXYYYZZVV.",
+      );
+    }
+  }
+
+  #assertValidPurpose(purpose) {
+    const validPurposes = Object.values(LocationPurpose);
+
+    if (!validPurposes.includes(purpose)) {
+      throw new Error(
+        `Invalid location purpose. Expected one of: ${validPurposes.join(", ")}.`,
       );
     }
   }
