@@ -1,11 +1,5 @@
 import { PickHistoryRecord } from "../../../domain/analytics/history/PickHistoryRecord.js";
-
-const excludedArticleNumbers = new Set([
-  "134194",
-  "134193",
-  "7629",
-  "7628",
-]);
+import { isExcludedArticle } from "../../../domain/analytics/history/PickHistoryRules.js";
 
 export function mapPickHistoryCsvRow(row) {
   const documentNumber = row.Dokumentnr?.trim();
@@ -15,7 +9,7 @@ export function mapPickHistoryCsvRow(row) {
     return null;
   }
 
-  if (excludedArticleNumbers.has(articleNumber)) {
+  if (isExcludedArticle(articleNumber)) {
     return null;
   }
 
@@ -52,23 +46,14 @@ function parsePostingDate(value) {
 
   const [month, day, year] = value.trim().split("/");
 
-  if (!month || !day || !year) {
-    throw new Error(`Invalid posting date: ${value}`);
-  }
+  const fullYear =
+    year.length === 2
+      ? 2000 + Number(year)
+      : Number(year);
 
-  const fullYear = year.length === 2
-    ? 2000 + Number(year)
-    : Number(year);
-
-  const date = new Date(
+  return new Date(
     fullYear,
     Number(month) - 1,
     Number(day),
   );
-
-  if (Number.isNaN(date.getTime())) {
-    throw new Error(`Invalid posting date: ${value}`);
-  }
-
-  return date;
 }
