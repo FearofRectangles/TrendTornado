@@ -7,7 +7,7 @@ export class PlacementEvaluationEngine {
     articles,
     {
       frequencyWeight = 0.7,
-      articleWeight = 0.3,
+      handlingWeight = 0.3,
     } = {},
   ) {
     if (!Array.isArray(articles)) {
@@ -18,23 +18,24 @@ export class PlacementEvaluationEngine {
 
     if (
       frequencyWeight < 0 ||
-      articleWeight < 0 ||
+      handlingWeight < 0 ||
       Math.abs(
         frequencyWeight +
-          articleWeight -
+          handlingWeight -
           1,
       ) > Number.EPSILON
     ) {
       throw new Error(
-        "Frequency weight and article weight must sum to 1.",
+        "Frequency weight and handling weight must sum to 1.",
       );
     }
 
     // --------------------------------------------------
-    // Only evaluate articles for which we have enough
-    // information to make a meaningful comparison.
+    // Only articles with complete analysis data are
+    // included in PlacementEvaluation v2.
     //
-    // V1 deliberately requires exactly one PICK location.
+    // We still deliberately require exactly one
+    // PICK location in this version.
     // --------------------------------------------------
 
     const eligibleArticles =
@@ -48,7 +49,13 @@ export class PlacementEvaluationEngine {
           Number.isFinite(
             article.pickFrequency,
           ) &&
-          article.positionedPickLocations
+          article.pickFrequency >= 0 &&
+          Number.isFinite(
+            article.averageQuantityPerPick,
+          ) &&
+          article.averageQuantityPerPick >= 0 &&
+          article
+            .positionedPickLocations
             ?.length === 1 &&
           Number.isFinite(
             article
@@ -58,8 +65,7 @@ export class PlacementEvaluationEngine {
       );
 
     // --------------------------------------------------
-    // Articles must only be compared with articles
-    // belonging to the same PICK flow.
+    // Compare articles only within the same PICK flow.
     // --------------------------------------------------
 
     const groupedByPickZone =
@@ -69,62 +75,105 @@ export class PlacementEvaluationEngine {
 
     const evaluations = [];
 
-    // --------------------------------------------------
-    // Evaluate each PICK zone independently
-    // --------------------------------------------------
-
     for (
       const zoneArticles
       of groupedByPickZone.values()
     ) {
-      const frequencyScores =
-        this.#buildRankScores(
-          zoneArticles,
-          (article) =>
-            article.pickFrequency,
+      // --------------------------------------------------
+      // Calculate actual handling load.
+      //
+      // Example:
+      //
+      // 2 kg article
+      // × 6 units per pick
+      // = 12 kg handled per pick
+      // --------------------------------------------------
+
+      const handlingByArticle =
+        new Map(
+          zoneArticles.map(
+            (article) => [
+              article.articleNumber,
+              article.weightKg *
+                article.averageQuantityPerPick,
+            ],
+          ),
         );
 
-      const weightScores =
-        this.#buildRankScores(
-          zoneArticles,
-          (article) =>
-            article.weightKg,
+      // --------------------------------------------------
+      // Maximum values are calculated independently
+      // within each PICK flow.
+      // --------------------------------------------------
+
+      const maxPickFrequency =
+        Math.max(
+          ...zoneArticles.map(
+            (article) =>
+              article.pickFrequency,
+          ),
+        );
+
+      const maxHandledWeight =
+        Math.max(
+          ...zoneArticles.map(
+            (article) =>
+              handlingByArticle.get(
+                article.articleNumber,
+              ),
+          ),
         );
 
       for (const article of zoneArticles) {
-        const frequencyScore =
-          frequencyScores.get(
-            article.articleNumber,
-          );
-
-        const weightScore =
-          weightScores.get(
+        const averageHandledWeightPerPick =
+          handlingByArticle.get(
             article.articleNumber,
           );
 
         // --------------------------------------------------
-        // Higher priority means that the article should
-        // generally appear earlier in the PICK flow.
+        // Log normalization preserves the magnitude of the
+        // difference between actual values without allowing
+        // a few extreme articles to dominate everything.
         //
-        // V1:
-        // 70 % pick frequency
-        // 30 % article weight
+        // Example, if max frequency is 177:
+        //
+        // 177 picks -> 1.00
+        //  39 picks -> ~0.71
+        //   7 picks -> ~0.40
+        // --------------------------------------------------
+
+        const frequencyScore =
+          this.#logNormalize(
+            article.pickFrequency,
+            maxPickFrequency,
+          );
+
+        const handlingScore =
+          this.#logNormalize(
+            averageHandledWeightPerPick,
+            maxHandledWeight,
+          );
+
+        // --------------------------------------------------
+        // V2 priority:
+        //
+        // 70 % actual pick frequency
+        // 30 % handling load per pick
         // --------------------------------------------------
 
         const priorityScore =
           frequencyScore *
             frequencyWeight +
-          weightScore *
-            articleWeight;
+          handlingScore *
+            handlingWeight;
 
         // --------------------------------------------------
-        // Position scale:
+        // For now we retain the V1 mapping between priority
+        // and desired position.
         //
-        // 0 = beginning of PICK flow
-        // 1 = end of PICK flow
+        // High priority -> early in the PICK flow.
         //
-        // High priority therefore produces a low desired
-        // position.
+        // We can later replace this with priority ranking
+        // without changing the rest of the architecture.
         // --------------------------------------------------
 
         const desiredPosition =
@@ -135,13 +184,11 @@ export class PlacementEvaluationEngine {
             .positionedPickLocations[0]
             .relativePickPosition;
 
-        // --------------------------------------------------
-        // Positive:
-        // article is located later than desired.
+        // Positive gap:
+        // article is later than its theoretical target.
         //
-        // Negative:
-        // article is located earlier than desired.
-        // --------------------------------------------------
+        // Negative gap:
+        // article is earlier than its theoretical target.
 
         const placementGap =
           currentPosition -
@@ -153,10 +200,17 @@ export class PlacementEvaluationEngine {
               article.articleNumber,
 
             frequencyScore,
-            weightScore,
+
+            handlingScore,
+
+            averageHandledWeightPerPick,
+
             priorityScore,
+
             currentPosition,
+
             desiredPosition,
+
             placementGap,
           }),
         );
@@ -167,7 +221,7 @@ export class PlacementEvaluationEngine {
   }
 
   // --------------------------------------------------
-  // Group articles by PICK zone
+  // Group articles by PICK flow
   // --------------------------------------------------
 
   static #groupByPickZone(articles) {
@@ -196,80 +250,43 @@ export class PlacementEvaluationEngine {
   }
 
   // --------------------------------------------------
-  // Rank score
+  // Log normalization
   //
-  // Lowest value  -> close to 0
-  // Highest value -> close to 1
+  // Returns a value between 0 and 1.
   //
-  // Equal values receive the same score.
+  // value = maximum -> 1
+  // value = 0       -> 0
   // --------------------------------------------------
 
-  static #buildRankScores(
-    articles,
-    getValue,
+  static #logNormalize(
+    value,
+    maximum,
   ) {
-    const sorted = [...articles].sort(
-      (a, b) =>
-        getValue(a) -
-        getValue(b),
-    );
-
-    const scores = new Map();
-
-    if (sorted.length === 0) {
-      return scores;
-    }
-
-    if (sorted.length === 1) {
-      scores.set(
-        sorted[0].articleNumber,
-        1,
+    if (
+      !Number.isFinite(value) ||
+      value < 0
+    ) {
+      throw new Error(
+        "Value must be a non-negative number.",
       );
-
-      return scores;
     }
 
-    let index = 0;
-
-    while (index < sorted.length) {
-      const value =
-        getValue(sorted[index]);
-
-      let endIndex = index;
-
-      // Find all articles with the same value.
-      while (
-        endIndex + 1 <
-          sorted.length &&
-        getValue(
-          sorted[endIndex + 1],
-        ) === value
-      ) {
-        endIndex++;
-      }
-
-      // Give ties the average rank of the group.
-      const averageIndex =
-        (index + endIndex) / 2;
-
-      const score =
-        averageIndex /
-        (sorted.length - 1);
-
-      for (
-        let i = index;
-        i <= endIndex;
-        i++
-      ) {
-        scores.set(
-          sorted[i].articleNumber,
-          score,
-        );
-      }
-
-      index = endIndex + 1;
+    if (
+      !Number.isFinite(maximum) ||
+      maximum < 0
+    ) {
+      throw new Error(
+        "Maximum must be a non-negative number.",
+      );
     }
 
-    return scores;
+    if (maximum === 0) {
+      return 0;
+    }
+
+    return (
+      Math.log1p(value) /
+      Math.log1p(maximum)
+    );
   }
 }

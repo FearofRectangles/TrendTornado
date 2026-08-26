@@ -345,7 +345,7 @@ const placementEvaluations =
     positionedArticles,
     {
       frequencyWeight: 0.7,
-      articleWeight: 0.3,
+      handlingWeight: 0.3,
     },
   );
 
@@ -1047,8 +1047,14 @@ if (physicalZonePosition) {
   );
 
   console.log(
-    `  Weight score:       ${formatScore(
-      evaluation.weightScore,
+    `  Avg handled / pick: ${formatNumber(
+      evaluation.averageHandledWeightPerPick,
+    )} kg`,
+  );
+
+  console.log(
+    `  Handling score:     ${formatScore(
+      evaluation.handlingScore,
     )}`,
   );
 
