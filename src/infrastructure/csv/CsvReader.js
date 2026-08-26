@@ -1,7 +1,13 @@
 import { readFile } from "node:fs/promises";
 import { parse } from "csv-parse/sync";
 
-export async function readCsvFile(filePath) {
+export async function readCsvFile(
+  filePath,
+  {
+    delimiter = ",",
+    fromLine = 1,
+  } = {},
+) {
   if (typeof filePath !== "string" || filePath.trim() === "") {
     throw new TypeError("CSV file path is required.");
   }
@@ -13,5 +19,7 @@ export async function readCsvFile(filePath) {
     skip_empty_lines: true,
     trim: true,
     bom: true,
+    delimiter,
+    from_line: fromLine,
   });
 }

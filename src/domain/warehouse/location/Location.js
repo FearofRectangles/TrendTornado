@@ -1,5 +1,9 @@
 import { LocationPurpose } from "../../shared/LocationPurpose.js";
-import { getTemperatureZoneFromZoneCode } from "../zone/ZoneRules.js";
+
+import {
+  getTemperatureZoneFromZoneCode,
+  getPickZoneTypeFromZoneCode,
+} from "../zone/ZoneRules.js";
 
 export class Location {
   constructor({
@@ -32,19 +36,37 @@ export class Location {
   }
 
   get temperatureZone() {
-    return getTemperatureZoneFromZoneCode(this.zone);
+    return getTemperatureZoneFromZoneCode(
+      this.zone,
+    );
+  }
+
+  get pickZoneType() {
+    return getPickZoneTypeFromZoneCode(
+      this.zone,
+    );
   }
 
   get isPickLocation() {
     return this.purpose === LocationPurpose.PICK;
   }
 
+  get isBufferLocation() {
+    return this.purpose === LocationPurpose.BUFFER;
+  }
+
   comesBefore(otherLocation) {
     if (!(otherLocation instanceof Location)) {
-      throw new TypeError("Expected another Location.");
+      throw new TypeError(
+        "Expected another Location.",
+      );
     }
 
-    return this.locationCode.localeCompare(otherLocation.locationCode) < 0;
+    return (
+      this.locationCode.localeCompare(
+        otherLocation.locationCode,
+      ) < 0
+    );
   }
 
   #assertValidLocationCode(locationCode) {
@@ -59,7 +81,9 @@ export class Location {
   }
 
   #assertValidPurpose(purpose) {
-    const validPurposes = Object.values(LocationPurpose);
+    const validPurposes = Object.values(
+      LocationPurpose,
+    );
 
     if (!validPurposes.includes(purpose)) {
       throw new Error(

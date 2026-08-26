@@ -24,11 +24,6 @@ function mapStorageType(storageType) {
     case "Frys":
       return TemperatureZone.FRYST;
 
-    case "Grönsaker":
-      return TemperatureZone.GRÖNSAKER;
-
-    case "Sprit":
-      return TemperatureZone.SPRIT;
 
     default:
       throw new Error(`Unknown storage type: ${storageType}`);
