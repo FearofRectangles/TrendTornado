@@ -60,6 +60,15 @@ import {
   resolveIdealPlacementArea,
 } from "../src/application/optimization/ResolveIdealPlacementArea.js";
 
+import {
+  PlacementDiagnostics,
+} from "../src/domain/analytics/placement/PlacementDiagnostics.js";
+
+import {
+  ErgonomicRecommendationEngine,
+} from "../src/domain/analytics/placement/ErgonomicRecommendationEngine.js";
+
+
 // --------------------------------------------------
 // Arguments
 // --------------------------------------------------
@@ -382,6 +391,65 @@ const rankedEvaluations =
       b.placementGap -
       a.placementGap,
   );
+const evaluationsByPickZone =
+  new Map();
+
+for (
+  const evaluation
+  of placementEvaluations
+) {
+  const article =
+    articlesByNumber.get(
+      evaluation.articleNumber,
+    );
+
+  if (
+    !article ||
+    article
+      .positionedPickLocations
+      .length === 0
+  ) {
+    continue;
+  }
+
+  const pickZoneType =
+    article
+      .positionedPickLocations[0]
+      .location
+      .pickZoneType;
+
+  if (
+    !evaluationsByPickZone.has(
+      pickZoneType,
+    )
+  ) {
+    evaluationsByPickZone.set(
+      pickZoneType,
+      [],
+    );
+  }
+
+  evaluationsByPickZone
+    .get(pickZoneType)
+    .push(evaluation);
+}
+
+const placementDiagnostics =
+  new Map(
+    [
+      ...evaluationsByPickZone,
+    ].map(
+      ([
+        pickZoneType,
+        evaluations,
+      ]) => [
+        pickZoneType,
+        PlacementDiagnostics.analyze(
+          evaluations,
+        ),
+      ],
+    ),
+  );
 
 const relocationRecommendations =
   rankedEvaluations
@@ -420,13 +488,21 @@ const relocationRecommendations =
 
             bayFlow,
           });
+        const ergonomicRecommendation =
+          ErgonomicRecommendationEngine.evaluate({
+            weightKg:
+              article.weightKg,
 
+            averageHandledWeightPerPick:
+              evaluation.averageHandledWeightPerPick,
+          });
         return {
           evaluation,
           article,
           currentLocation,
           currentPhysicalPosition,
           recommendedArea,
+          ergonomicRecommendation,
         };
       },
     )
@@ -894,6 +970,94 @@ for (
 }
 
 
+console.log("");
+console.log(
+  "Priority score distribution",
+);
+console.log(
+  "---------------------------",
+);
+
+for (
+  const [
+    pickZoneType,
+    diagnostics,
+  ]
+  of placementDiagnostics
+) {
+  console.log("");
+  console.log(pickZoneType);
+
+  console.log(
+    `Articles:           ${diagnostics.count}`,
+  );
+
+  console.log(
+    `Frequency score:    ${formatScore(
+      diagnostics.frequencyScore.min,
+    )} / ${formatScore(
+      diagnostics.frequencyScore.median,
+    )} / ${formatScore(
+      diagnostics.frequencyScore.max,
+    )}   (min / median / max)`,
+  );
+
+  console.log(
+    `Handling score:     ${formatScore(
+      diagnostics.handlingScore.min,
+    )} / ${formatScore(
+      diagnostics.handlingScore.median,
+    )} / ${formatScore(
+      diagnostics.handlingScore.max,
+    )}`,
+  );
+
+  console.log(
+    `Priority score:     ${formatScore(
+      diagnostics.priorityScore.min,
+    )} / ${formatScore(
+      diagnostics.priorityScore.median,
+    )} / ${formatScore(
+      diagnostics.priorityScore.max,
+    )}`,
+  );
+
+  console.log("");
+  console.log(
+    "Priority percentiles:",
+  );
+
+  console.log(
+    `  P10: ${formatScore(
+      diagnostics.priorityScore.p10,
+    )}`,
+  );
+
+  console.log(
+    `  P25: ${formatScore(
+      diagnostics.priorityScore.p25,
+    )}`,
+  );
+
+  console.log(
+    `  P50: ${formatScore(
+      diagnostics.priorityScore.median,
+    )}`,
+  );
+
+  console.log(
+    `  P75: ${formatScore(
+      diagnostics.priorityScore.p75,
+    )}`,
+  );
+
+  console.log(
+    `  P90: ${formatScore(
+      diagnostics.priorityScore.p90,
+    )}`,
+  );
+}
+
 // --------------------------------------------------
 // Relocation candidates
 // --------------------------------------------------
@@ -1087,6 +1251,10 @@ console.log("");
 console.log("Relocation recommendations");
 console.log("--------------------------");
 
+console.log("");
+console.log("Relocation recommendations");
+console.log("--------------------------");
+
 for (
   const [index, recommendation]
   of relocationRecommendations
@@ -1099,6 +1267,7 @@ for (
     currentLocation,
     currentPhysicalPosition,
     recommendedArea,
+    ergonomicRecommendation,
   } = recommendation;
 
   if (!recommendedArea) {
@@ -1110,6 +1279,7 @@ for (
     "UNKNOWN";
 
   console.log("");
+
   console.log(
     `${String(index + 1).padStart(2)}. ` +
     `${article.articleNumber} - ` +
@@ -1133,6 +1303,16 @@ for (
     `    Priority gap: ${formatSignedPercentage(
       evaluation.placementGap,
     )}`,
+  );
+
+  console.log(
+    `    Ergonomics:   ${ergonomicRecommendation.recommendation}`,
+  );
+
+  console.log(
+    `    Handling:     ${formatNumber(
+      evaluation.averageHandledWeightPerPick,
+    )} kg avg / pick`,
   );
 }
 
