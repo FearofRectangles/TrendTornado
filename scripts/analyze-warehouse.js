@@ -1,72 +1,10 @@
-import { readCsvFile } from "../src/infrastructure/csv/CsvReader.js";
+import {
+  WarehouseDataLoader,
+} from "../src/infrastructure/data/WarehouseDataLoader.js";
 
 import {
-  mapPickHistoryCsvRow,
-} from "../src/infrastructure/importers/history/PickHistoryCsvMapper.js";
-
-import {
-  mapArticleCsvRow,
-} from "../src/infrastructure/importers/article/ArticleCsvMapper.js";
-
-import {
-  mapLocationCsvRow,
-} from "../src/infrastructure/importers/location/LocationCsvMapper.js";
-
-import {
-  mapPlacementCsvRow,
-} from "../src/infrastructure/importers/placement/PlacementCsvMapper.js";
-
-import {
-  StatisticsEngine,
-} from "../src/domain/analytics/statistics/StatisticsEngine.js";
-
-import {
-  PlacementEvaluationEngine,
-} from "../src/domain/analytics/placement/PlacementEvaluationEngine.js";
-
-import {
-  LocationPurpose,
-} from "../src/domain/shared/LocationPurpose.js";
-
-import {
-  enrichArticleStatistics,
-} from "../src/application/analysis/EnrichArticleStatistics.js";
-
-import {
-  attachPickPlacements,
-} from "../src/application/analysis/AttachPickPlacements.js";
-
-import {
-  attachPickSequence,
-} from "../src/application/analysis/AttachPickSequence.js";
-
-import {
-  buildPlacements,
-} from "../src/application/warehouse/BuildPlacements.js";
-
-import {
-  buildPickSequence,
-} from "../src/application/warehouse/BuildPickSequence.js";
-
-import {
-  buildPhysicalZoneSequence,
-} from "../src/application/warehouse/BuildPhysicalZoneSequence.js";
-
-import {
-  buildBayFlow,
-} from "../src/application/warehouse/BuildBayFlow.js";
-
-import {
-  resolveIdealPlacementArea,
-} from "../src/application/optimization/ResolveIdealPlacementArea.js";
-
-import {
-  PlacementDiagnostics,
-} from "../src/domain/analytics/placement/PlacementDiagnostics.js";
-
-import {
-  ErgonomicRecommendationEngine,
-} from "../src/domain/analytics/placement/ErgonomicRecommendationEngine.js";
+  WarehouseAnalysisService,
+} from "../src/application/analysis/WarehouseAnalysisService.js";
 
 
 // --------------------------------------------------
@@ -100,44 +38,31 @@ if (
 
 
 // --------------------------------------------------
-// Read CSV files
+// Load warehouse data
 // --------------------------------------------------
 
-const historyRows =
-  await readCsvFile(
-    historyFilePath,
-  );
+const data =
+  await WarehouseDataLoader.load({
+    historyPath:
+      historyFilePath,
 
-const articleRows =
-  await readCsvFile(
-    articleFilePath,
-  );
+    articlePath:
+      articleFilePath,
 
-const locationRows =
-  await readCsvFile(
-    locationFilePath,
-  );
+    locationPath:
+      locationFilePath,
 
-const placementRows =
-  await readCsvFile(
-    placementFilePath,
-    {
-      fromLine: 2,
-    },
-  );
+    placementPath:
+      placementFilePath,
+  });
 
-
-// --------------------------------------------------
-// History
-// --------------------------------------------------
-
-const historyRecords =
-  historyRows
-    .map(mapPickHistoryCsvRow)
-    .filter(
-      (record) =>
-        record !== null,
-    );
+const {
+  historyRecords,
+  articles,
+  locations,
+  placementRecords,
+  importSummary,
+} = data;
 
 if (
   historyRecords.length === 0
@@ -151,217 +76,84 @@ if (
 
 
 // --------------------------------------------------
-// Articles
+// Analyze warehouse
 // --------------------------------------------------
 
-const articles =
-  articleRows.map(
-    mapArticleCsvRow,
-  );
-
-
-// --------------------------------------------------
-// Locations
-// --------------------------------------------------
-
-const validLocationRows = [];
-const invalidLocationRows = [];
-
-for (const row of locationRows) {
-  const locationCode =
-    String(
-      row.Lokation ?? "",
-    ).trim();
-
-  if (
-    /^\d{9}$/.test(
-      locationCode,
-    )
-  ) {
-    validLocationRows.push(
-      row,
-    );
-  } else {
-    invalidLocationRows.push(
-      row,
-    );
-  }
-}
-
-const locations =
-  validLocationRows.map(
-    mapLocationCsvRow,
-  );
-
-
-// --------------------------------------------------
-// Placement records
-// --------------------------------------------------
-
-const placementRecords =
-  placementRows
-    .map(
-      mapPlacementCsvRow,
-    )
-    .filter(
-      (record) =>
-        record !== null,
-    );
-
-
-// --------------------------------------------------
-// Build placements
-// --------------------------------------------------
-
-const placementResult =
-  buildPlacements(
-    placementRecords,
+const analysis =
+  WarehouseAnalysisService.analyze({
+    historyRecords,
     articles,
     locations,
-  );
-
-const pickPlacements =
-  placementResult.placements.filter(
-    (placement) =>
-      placement.location
-        .purpose ===
-      LocationPurpose.PICK,
-  );
+    placementRecords,
+  });
 
 
-// --------------------------------------------------
-// Build PICK sequence
-// --------------------------------------------------
+const {
+  period,
+  warehouse,
+  placements,
+  articles: articleAnalysis,
+  evaluations,
+  recommendations,
+  simulation,
+} = analysis;
 
-const pickSequence =
-  buildPickSequence(
-    locations,
-  );
 
-const bayFlow =
-  buildBayFlow(
-    locations,
-  );
+const {
+  pickSequence,
+  physicalZoneSequence,
+} = warehouse;
 
-const physicalZoneSequence =
-  buildPhysicalZoneSequence(
-    locations,
-  );
 
-const physicalZoneByLocationCode =
-  new Map(
-    physicalZoneSequence.map(
-      (entry) => [
-        entry.location.locationCode,
-        entry,
-      ],
-    ),
-  );
+const {
+  result: placementResult,
+  pickPlacements,
+} = placements;
 
-// --------------------------------------------------
-// Determine analysis period
-// --------------------------------------------------
 
-const timestamps =
-  historyRecords.map(
-    (record) =>
-      record.postingDate
-        .getTime(),
-  );
+const {
+  positioned:
+    positionedArticles,
+
+  ranked:
+    rankedArticles,
+
+  withPickLocation:
+    articlesWithPickLocation,
+
+  withoutPickLocation:
+    articlesWithoutPickLocation,
+
+  withMultiplePickLocations:
+    articlesWithMultiplePickLocations,
+
+  withPosition:
+    articlesWithPosition,
+} = articleAnalysis;
+
+
+const {
+  all:
+    placementEvaluations,
+
+  ranked:
+    rankedEvaluations,
+
+  diagnostics:
+    placementDiagnostics,
+} = evaluations;
+
+
+const relocationRecommendations =
+  recommendations;
+
 
 const periodStart =
-  new Date(
-    Math.min(
-      ...timestamps,
-    ),
-  );
+  period.start;
 
 const periodEnd =
-  new Date(
-    Math.max(
-      ...timestamps,
-    ),
-  );
+  period.end;
 
-periodStart.setHours(
-  0,
-  0,
-  0,
-  0,
-);
-
-periodEnd.setHours(
-  23,
-  59,
-  59,
-  999,
-);
-
-
-// --------------------------------------------------
-// Statistics
-// --------------------------------------------------
-
-const statistics =
-  StatisticsEngine.calculate(
-    historyRecords,
-    {
-      periodStart,
-      periodEnd,
-    },
-  );
-
-
-// --------------------------------------------------
-// Enrich statistics with article data
-// --------------------------------------------------
-
-const enrichedStatistics =
-  enrichArticleStatistics(
-    statistics,
-    articles,
-  );
-
-
-// --------------------------------------------------
-// Attach PICK placements
-// --------------------------------------------------
-
-const analyzedArticles =
-  attachPickPlacements(
-    enrichedStatistics,
-    pickPlacements,
-  );
-
-
-// --------------------------------------------------
-// Attach PICK sequence
-// --------------------------------------------------
-
-const positionedArticles =
-  attachPickSequence(
-    analyzedArticles,
-    pickSequence,
-  );
-
-
-// --------------------------------------------------
-// Placement evaluation
-// --------------------------------------------------
-
-const placementEvaluations =
-  PlacementEvaluationEngine.evaluate(
-    positionedArticles,
-    {
-      frequencyWeight: 0.7,
-      handlingWeight: 0.3,
-    },
-  );
-
-
-// --------------------------------------------------
-// Lookups
-// --------------------------------------------------
 
 const articlesByNumber =
   new Map(
@@ -374,179 +166,14 @@ const articlesByNumber =
   );
 
 
-// --------------------------------------------------
-// Rankings
-// --------------------------------------------------
-
-const rankedArticles =
-  positionedArticles.toSorted(
-    (a, b) =>
-      b.pickFrequency -
-      a.pickFrequency,
-  );
-
-const rankedEvaluations =
-  placementEvaluations.toSorted(
-    (a, b) =>
-      b.placementGap -
-      a.placementGap,
-  );
-const evaluationsByPickZone =
-  new Map();
-
-for (
-  const evaluation
-  of placementEvaluations
-) {
-  const article =
-    articlesByNumber.get(
-      evaluation.articleNumber,
-    );
-
-  if (
-    !article ||
-    article
-      .positionedPickLocations
-      .length === 0
-  ) {
-    continue;
-  }
-
-  const pickZoneType =
-    article
-      .positionedPickLocations[0]
-      .location
-      .pickZoneType;
-
-  if (
-    !evaluationsByPickZone.has(
-      pickZoneType,
-    )
-  ) {
-    evaluationsByPickZone.set(
-      pickZoneType,
-      [],
-    );
-  }
-
-  evaluationsByPickZone
-    .get(pickZoneType)
-    .push(evaluation);
-}
-
-const placementDiagnostics =
+const physicalZoneByLocationCode =
   new Map(
-    [
-      ...evaluationsByPickZone,
-    ].map(
-      ([
-        pickZoneType,
-        evaluations,
-      ]) => [
-        pickZoneType,
-        PlacementDiagnostics.analyze(
-          evaluations,
-        ),
+    physicalZoneSequence.map(
+      (entry) => [
+        entry.location.locationCode,
+        entry,
       ],
     ),
-  );
-
-const relocationRecommendations =
-  rankedEvaluations
-    .map(
-      (evaluation) => {
-        const article =
-          articlesByNumber.get(
-            evaluation.articleNumber,
-          );
-
-        if (
-          !article ||
-          article.positionedPickLocations.length === 0
-        ) {
-          return null;
-        }
-
-        const positioned =
-          article.positionedPickLocations[0];
-
-        const currentLocation =
-          positioned.location;
-
-        const currentPhysicalPosition =
-          physicalZoneByLocationCode.get(
-            currentLocation.locationCode,
-          );
-
-        const recommendedArea =
-          resolveIdealPlacementArea({
-            desiredPosition:
-              evaluation.desiredPosition,
-
-            pickZoneType:
-              currentLocation.pickZoneType,
-
-            bayFlow,
-          });
-        const ergonomicRecommendation =
-          ErgonomicRecommendationEngine.evaluate({
-            weightKg:
-              article.weightKg,
-
-            averageHandledWeightPerPick:
-              evaluation.averageHandledWeightPerPick,
-          });
-        return {
-          evaluation,
-          article,
-          currentLocation,
-          currentPhysicalPosition,
-          recommendedArea,
-          ergonomicRecommendation,
-        };
-      },
-    )
-    .filter(
-      (recommendation) =>
-        recommendation !== null,
-    );
-
-// --------------------------------------------------
-// Coverage
-// --------------------------------------------------
-
-const articlesWithPickLocation =
-  positionedArticles.filter(
-    (article) =>
-      article.pickLocations
-        .length > 0,
-  );
-
-const articlesWithoutPickLocation =
-  positionedArticles.filter(
-    (article) =>
-      article.pickLocations
-        .length === 0,
-  );
-
-const articlesWithMultiplePickLocations =
-  positionedArticles.filter(
-    (article) =>
-      article.pickLocations
-        .length > 1,
-  );
-
-const articlesWithPosition =
-  positionedArticles.filter(
-    (article) =>
-      article
-        .positionedPickLocations
-        .some(
-          (positioned) =>
-            positioned
-              .relativePickPosition !==
-            null,
-        ),
   );
 
 
@@ -574,31 +201,31 @@ console.log("Import");
 console.log("------");
 
 console.log(
-  `History rows:          ${historyRows.length}`,
+  `History rows:          ${importSummary.historyRows}`,
 );
 
 console.log(
-  `Valid pick records:    ${historyRecords.length}`,
+  `Valid pick records:    ${importSummary.validHistoryRecords}`,
 );
 
 console.log(
-  `Article rows:          ${articleRows.length}`,
+  `Article rows:          ${importSummary.articleRows}`,
 );
 
 console.log(
-  `Location rows:         ${locationRows.length}`,
+  `Location rows:         ${importSummary.locationRows}`,
 );
 
 console.log(
-  `Valid location rows:   ${validLocationRows.length}`,
+  `Valid location rows:   ${importSummary.validLocationRows}`,
 );
 
 console.log(
-  `Invalid locations:     ${invalidLocationRows.length}`,
+  `Invalid locations:     ${importSummary.invalidLocationRows}`,
 );
 
 console.log(
-  `Placement records:     ${placementRecords.length}`,
+  `Placement records:     ${importSummary.validPlacementRecords}`,
 );
 
 
@@ -620,6 +247,7 @@ console.log(
   `PICK sequence entries: ${pickSequence.length}`,
 );
 
+
 const sequenceByZone =
   new Map();
 
@@ -640,6 +268,7 @@ for (
   );
 }
 
+
 for (
   const [zone, count]
   of sequenceByZone
@@ -649,14 +278,19 @@ for (
   );
 }
 
+
 console.log("");
 console.log("Physical zones");
 console.log("--------------");
 
+
 const physicalZoneCounts =
   new Map();
 
-for (const entry of physicalZoneSequence) {
+for (
+  const entry
+  of physicalZoneSequence
+) {
   physicalZoneCounts.set(
     entry.zone,
     (
@@ -667,18 +301,22 @@ for (const entry of physicalZoneSequence) {
   );
 }
 
+
 for (
   const [zone, count]
   of [...physicalZoneCounts.entries()]
     .sort(
       ([zoneA], [zoneB]) =>
-        zoneA.localeCompare(zoneB),
+        zoneA.localeCompare(
+          zoneB,
+        ),
     )
 ) {
   console.log(
     `Zone ${zone}: ${count} PICK locations`,
   );
 }
+
 
 // --------------------------------------------------
 // Placements
@@ -753,6 +391,143 @@ console.log(
 
 
 // --------------------------------------------------
+// Historical simulation
+// --------------------------------------------------
+
+console.log("");
+
+console.log(
+  "Historical simulation",
+);
+
+console.log(
+  "---------------------",
+);
+
+console.log(
+  `Historical records:   ${historyRecords.length}`,
+);
+
+console.log(
+  `Simulation groups:    ${simulation.baseline.simulatedOrders}`,
+);
+
+console.log(
+  `Simulated picks:      ${simulation.baseline.totalPicks}`,
+);
+
+console.log(
+  `Coverage:             ${formatPercentage(
+    simulation.coverage,
+  )}`,
+);
+
+console.log(
+  `Single-pick groups:   ${simulation.baseline.singlePickGroups}`,
+);
+
+console.log(
+  `Multi-pick groups:    ${simulation.baseline.multiPickGroups}`,
+);
+
+console.log(
+  `Multi-pick avg span:  ${formatPercentage(
+    simulation.baseline.averageMultiPickSpan,
+  )}`,
+);
+console.log("");
+
+console.log(
+  "Simulation coverage diagnostics",
+);
+
+console.log(
+  "-------------------------------",
+);
+
+console.log(
+  `Included records:     ${simulation.diagnostics.includedRecords}`,
+);
+
+console.log(
+  `Excluded records:     ${simulation.diagnostics.excludedRecords}`,
+);
+
+console.log("");
+
+console.log(
+  `Missing article:      ${simulation.diagnostics.missingArticle}`,
+);
+
+console.log(
+  `Invalid weight:       ${simulation.diagnostics.invalidWeight}`,
+);
+
+console.log(
+  `No PICK location:     ${simulation.diagnostics.noPickLocation}`,
+);
+
+console.log(
+  `Multiple PICK loc.:   ${simulation.diagnostics.multiplePickLocations}`,
+);
+
+console.log(
+  `No sequence position: ${simulation.diagnostics.noSequencePosition}`,
+);
+
+console.log(
+  `Missing pick zone:    ${simulation.diagnostics.missingPickZone}`,
+);
+
+console.log("");
+
+console.log(
+  `Simulation groups:    ${simulation.diagnostics.simulatedGroups}`,
+);
+
+console.log("");
+
+console.log(
+  "Current layout baseline",
+);
+
+console.log(
+  "-----------------------",
+);
+
+console.log(
+  `Average pick span:    ${formatPercentage(
+    simulation.baseline.averagePickSpan,
+  )}`,
+);
+
+
+console.log("");
+
+console.log(
+  "Weight ordering",
+);
+
+console.log(
+  "---------------",
+);
+
+console.log(
+  `Correct pairs:        ${simulation.baseline.correctlyOrderedPairs}`,
+);
+
+console.log(
+  `Comparable pairs:     ${simulation.baseline.comparablePairs}`,
+);
+
+console.log(
+  `Score:                ${formatPercentage(
+    simulation.baseline.weightOrderScore,
+  )}`,
+);
+
+
+// --------------------------------------------------
 // Top articles by frequency
 // --------------------------------------------------
 
@@ -765,6 +540,7 @@ console.log(
 console.log(
   "------------------------",
 );
+
 
 for (
   const [index, article]
@@ -852,6 +628,7 @@ console.log(
 console.log(
   "---------------",
 );
+
 
 for (
   const article
@@ -970,13 +747,20 @@ for (
 }
 
 
+// --------------------------------------------------
+// Priority score distribution
+// --------------------------------------------------
+
 console.log("");
+
 console.log(
   "Priority score distribution",
 );
+
 console.log(
   "---------------------------",
 );
+
 
 for (
   const [
@@ -986,7 +770,9 @@ for (
   of placementDiagnostics
 ) {
   console.log("");
-  console.log(pickZoneType);
+  console.log(
+    pickZoneType,
+  );
 
   console.log(
     `Articles:           ${diagnostics.count}`,
@@ -1058,6 +844,7 @@ for (
   );
 }
 
+
 // --------------------------------------------------
 // Relocation candidates
 // --------------------------------------------------
@@ -1071,6 +858,7 @@ console.log(
 console.log(
   "-------------------------",
 );
+
 
 for (
   const [index, evaluation]
@@ -1089,9 +877,6 @@ for (
 
   const location =
     positionedLocation.location;
-
-  
-
 
   console.log(
     `${String(
@@ -1134,6 +919,7 @@ console.log(
   "------------------------------",
 );
 
+
 for (
   const evaluation
   of rankedEvaluations.slice(
@@ -1154,9 +940,9 @@ for (
     positionedLocation.location;
 
   const physicalZonePosition =
-  physicalZoneByLocationCode.get(
-    location.locationCode,
-  );
+    physicalZoneByLocationCode.get(
+      location.locationCode,
+    );
 
   console.log("");
 
@@ -1173,26 +959,28 @@ for (
   );
 
   console.log(
-  `  Physical zone:      ${location.zone}`,
-);
-
-if (physicalZonePosition) {
-  console.log(
-  `  Bay sequence:       ` +
-    `${physicalZonePosition.baySequence} / ` +
-    `${physicalZonePosition.totalZoneBays}`,
-);
-
-  console.log(
-    `  Position in zone:   ${formatPercentage(
-      physicalZonePosition.relativeZonePosition,
-    )}`,
+    `  Physical zone:      ${location.zone}`,
   );
 
-  console.log(
-    `  Zone section:       ${physicalZonePosition.zoneSection}`,
-  );
-}
+  if (
+    physicalZonePosition
+  ) {
+    console.log(
+      `  Bay sequence:       ` +
+        `${physicalZonePosition.baySequence} / ` +
+        `${physicalZonePosition.totalZoneBays}`,
+    );
+
+    console.log(
+      `  Position in zone:   ${formatPercentage(
+        physicalZonePosition.relativeZonePosition,
+      )}`,
+    );
+
+    console.log(
+      `  Zone section:       ${physicalZonePosition.zoneSection}`,
+    );
+  }
 
   console.log(
     `  Weight:             ${formatNumber(
@@ -1247,13 +1035,21 @@ if (physicalZonePosition) {
   );
 }
 
-console.log("");
-console.log("Relocation recommendations");
-console.log("--------------------------");
+
+// --------------------------------------------------
+// Relocation recommendations
+// --------------------------------------------------
 
 console.log("");
-console.log("Relocation recommendations");
-console.log("--------------------------");
+
+console.log(
+  "Relocation recommendations",
+);
+
+console.log(
+  "--------------------------",
+);
+
 
 for (
   const [index, recommendation]
@@ -1275,15 +1071,18 @@ for (
   }
 
   const currentSection =
-    currentPhysicalPosition?.zoneSection ??
+    currentPhysicalPosition
+      ?.zoneSection ??
     "UNKNOWN";
 
   console.log("");
 
   console.log(
-    `${String(index + 1).padStart(2)}. ` +
-    `${article.articleNumber} - ` +
-    `${article.name ?? "UNKNOWN"}`,
+    `${String(
+      index + 1,
+    ).padStart(2)}. ` +
+      `${article.articleNumber} - ` +
+      `${article.name ?? "UNKNOWN"}`,
   );
 
   console.log(
@@ -1296,7 +1095,7 @@ for (
 
   console.log(
     `    Movement:     ${currentLocation.zone} ${currentSection}` +
-    ` -> ${recommendedArea.zone} ${recommendedArea.section}`,
+      ` -> ${recommendedArea.zone} ${recommendedArea.section}`,
   );
 
   console.log(
@@ -1315,6 +1114,7 @@ for (
     )} kg avg / pick`,
   );
 }
+
 
 // --------------------------------------------------
 // Helpers
@@ -1345,14 +1145,19 @@ function formatDate(date) {
   );
 }
 
+
 function formatNumber(value) {
   return new Intl.NumberFormat(
     "sv-SE",
     {
-      maximumFractionDigits: 2,
+      maximumFractionDigits:
+        2,
     },
-  ).format(value);
+  ).format(
+    value,
+  );
 }
+
 
 function formatPercentage(
   value,
@@ -1365,6 +1170,7 @@ function formatPercentage(
     value * 100
   ).toFixed(1)} %`;
 }
+
 
 function formatSignedPercentage(
   value,
@@ -1387,6 +1193,11 @@ function formatSignedPercentage(
   );
 }
 
-function formatScore(value) {
-  return value.toFixed(3);
+
+function formatScore(
+  value,
+) {
+  return value.toFixed(
+    3,
+  );
 }

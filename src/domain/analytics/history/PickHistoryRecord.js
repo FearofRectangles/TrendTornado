@@ -18,25 +18,33 @@ export class PickHistoryRecord {
 
   #assertPostingDate(date) {
     if (!(date instanceof Date)) {
-      throw new Error("Posting date must be a Date.");
+      throw new Error(
+        "Posting date must be a Date.",
+      );
     }
   }
 
   #assertDocumentNumber(documentNumber) {
     if (!documentNumber) {
-      throw new Error("Document number is required.");
+      throw new Error(
+        "Document number is required.",
+      );
     }
   }
 
   #assertArticleNumber(articleNumber) {
     if (!articleNumber) {
-      throw new Error("Article number is required.");
+      throw new Error(
+        "Article number is required.",
+      );
     }
   }
 
   #assertQuantity(quantity) {
     if (quantity <= 0) {
-      throw new Error("Picked quantity must be greater than zero.");
+      throw new Error(
+        "Picked quantity must be greater than zero.",
+      );
     }
   }
 }

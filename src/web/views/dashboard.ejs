@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    <%= title %> — Översikt
+  </title>
+
+  <link
+    rel="stylesheet"
+    href="/css/app.css"
+  >
+</head>
+
+
+<body>
+
+  <div class="app-shell">
+
+
+    <!-- ============================================= -->
+    <!-- Sidebar                                       -->
+    <!-- ============================================= -->
+
+    <aside class="sidebar">
+
+      <div class="brand">
+
+        <div class="brand-mark">
+          ◉
+        </div>
+
+        <div>
+          <div class="brand-name">
+            Trend<span>Tornado</span>
+          </div>
+
+          <div class="brand-subtitle">
+            lite hit och lite dit
+          </div>
+        </div>
+
+      </div>
+
+
+      <nav class="sidebar-nav">
+
+        <a
+          class="nav-item active"
+          href="/"
+        >
+          <span class="nav-icon">
+            ⌂
+          </span>
+
+          Översikt
+        </a>
+
+
+        <div class="nav-group">
+
+          <a
+            class="nav-item"
+            href="#"
+          >
+            <span class="nav-icon">
+              ⇄
+            </span>
+
+            Flyttare
+
+            <span class="nav-chevron">
+              ⌃
+            </span>
+          </a>
+
+          <div class="nav-subitems">
+
+            <a
+              class="nav-subitem active"
+              href="#"
+            >
+              Alla flyttare
+            </a>
+
+            <a
+              class="nav-subitem"
+              href="#"
+            >
+              Flytta tidigare
+            </a>
+
+            <a
+              class="nav-subitem"
+              href="#"
+            >
+              Flytta senare
+            </a>
+
+          </div>
+
+        </div>
+
+
+        <a
+          class="nav-item"
+          href="#"
+        >
+          <span class="nav-icon">
+            ◫
+          </span>
+
+          Analys
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#"
+        >
+          <span class="nav-icon">
+            ♙
+          </span>
+
+          Lagerstruktur
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#"
+        >
+          <span class="nav-icon">
+            ▣
+          </span>
+
+          Artiklar
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#"
+        >
+          <span class="nav-icon">
+            ◷
+          </span>
+
+          Historik
+        </a>
+
+
+        <a
+          class="nav-item"
+          href="#"
+        >
+          <span class="nav-icon">
+            ⚙
+          </span>
+
+          Inställningar
+        </a>
+
+      </nav>
+
+
+      <div class="latest-analysis">
+
+        <div class="latest-analysis-title">
+          Senaste analys
+        </div>
+
+        <div>
+          <%= period.end.toLocaleDateString(
+            "sv-SE"
+          ) %>
+        </div>
+
+        <div class="latest-analysis-meta">
+          <%= importSummary.validHistoryRecords %>
+          plockrader
+        </div>
+
+        <div class="analysis-ready">
+          <span class="status-dot"></span>
+
+          Klar
+        </div>
+
+      </div>
+
+    </aside>
+
+
+
+    <!-- ============================================= -->
+    <!-- Main                                          -->
+    <!-- ============================================= -->
+
+    <main class="main-content">
+
+
+      <!-- Header -->
+
+      <header class="page-header">
+
+        <div>
+
+          <h1>
+            Översikt
+          </h1>
+
+          <p>
+            Här är en sammanfattning av ditt lager
+            och de mest värdefulla flyttarna.
+          </p>
+
+        </div>
+
+
+        <div class="header-actions">
+
+          <div class="date-range">
+
+            <%= period.start
+              .toISOString()
+              .slice(0, 10)
+            %>
+
+            <span>–</span>
+
+            <%= period.end
+              .toISOString()
+              .slice(0, 10)
+            %>
+
+            <span class="date-icon">
+              □
+            </span>
+
+          </div>
+
+
+          <button
+            class="primary-button"
+            type="button"
+          >
+            Uppdatera analys
+
+            <span>
+              ↻
+            </span>
+          </button>
+
+        </div>
+
+      </header>
+
+
+
+      <!-- =========================================== -->
+      <!-- Dashboard grid                              -->
+      <!-- =========================================== -->
+
+      <div class="dashboard-grid">
+
+
+        <!-- KPI 1 -->
+
+        <section class="card kpi-card">
+
+          <div class="card-heading">
+
+            <span>
+              Lager-score
+            </span>
+
+            <span class="info-icon">
+              i
+            </span>
+
+          </div>
+
+
+          <div class="kpi-content">
+
+            <div>
+
+              <div class="kpi-value score">
+
+                <% if (
+                  summary.warehouseScore !== null
+                ) { %>
+
+                  <%= summary.warehouseScore %>
+
+                  <small>
+                    /100
+                  </small>
+
+                <% } else { %>
+
+                  —
+
+                <% } %>
+
+              </div>
+
+
+              <div class="kpi-meta muted">
+
+                Baslinje definieras
+                i nästa steg
+
+              </div>
+
+            </div>
+
+
+            <div class="kpi-mini-chart">
+
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- KPI 2 -->
+
+        <section class="card kpi-card">
+
+          <div class="card-heading">
+
+            <span>
+              Artiklar analyserade
+            </span>
+
+            <span class="info-icon">
+              i
+            </span>
+
+          </div>
+
+
+          <div class="kpi-content">
+
+            <div>
+
+              <div class="kpi-value">
+                <%= summary.analyzedArticles
+                  .toLocaleString("sv-SE")
+                %>
+              </div>
+
+              <div class="kpi-meta">
+                <%= summary.evaluatedArticles
+                  .toLocaleString("sv-SE")
+                %>
+                utvärderade
+              </div>
+
+            </div>
+
+
+            <div class="kpi-symbol green">
+              ◇
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+        <!-- KPI 3 -->
+
+        <section class="card kpi-card">
+
+          <div class="card-heading">
+
+            <span>
+              Flyttkandidater
+            </span>
+
+            <span class="info-icon">
+              i
+            </span>
+
+          </div>
+
+
+          <div class="kpi-content">
+
+            <div>
+
+              <div class="kpi-value">
+                <%= summary
+                  .relocationCandidates
+                  .toLocaleString("sv-SE")
+                %>
+              </div>
+
+              <div class="kpi-meta">
+                gap ≥
+                <%= (
+                  strongGapThreshold *
+                  100
+                ).toFixed(0) %> %
+              </div>
+
+            </div>
+
+
+            <div class="kpi-symbol purple">
+              ⇅
+            </div>
+
+          </div>
+
+        </section>
+
+
+<!-- ========================================= -->
+        <!-- Pick zone distribution                     -->
+        <!-- ========================================= -->
+
+        <section class="card pickzone-card">
+
+          <h2>
+            Fördelning per plockzon
+          </h2>
+
+
+          <div class="pickzone-content">
+
+            <div class="donut-placeholder">
+
+              <div class="donut-inner">
+
+              </div>
+
+            </div>
+
+
+            <div class="pickzone-list">
+
+              <% pickZones.forEach(
+                (zone) => {
+              %>
+
+                <div class="pickzone-row">
+
+                  <span
+                    class="
+                      pickzone-color
+                      pickzone-color-<%=
+                        zone.name
+                          .toLowerCase()
+                          .replace(
+                            'ö',
+                            'o'
+                          )
+                      %>
+                    "
+                  ></span>
+
+                  <span>
+                    <%= zone.name %>
+                  </span>
+
+                  <strong>
+                    <%= zone.count
+                      .toLocaleString(
+                        "sv-SE"
+                      )
+                    %>
+                  </strong>
+
+                  <span class="muted">
+                    (
+                    <%= (
+                      zone.percentage *
+                      100
+                    ).toFixed(1) %>%
+                    )
+                  </span>
+
+                </div>
+
+              <% }) %>
+
+            </div>
+
+          </div>
+
+        </section>
+
+
+
+
+        <!-- ========================================= -->
+        <!-- Recommendations table                     -->
+        <!-- ========================================= -->
+
+        <section class="card relocation-card">
+
+          <div class="table-toolbar">
+
+            <div>
+
+              <h2>
+                Topp 10 flyttkandidater
+              </h2>
+
+              <p>
+                Artiklar som bör flyttas tidigare
+                eller senare i plockslingan.
+              </p>
+
+            </div>
+
+
+            <div class="table-filters">
+
+  <select id="zoneFilter">
+    <option value="">
+      Alla zoner
+    </option>
+
+    <% pickZones.forEach((zone) => { %>
+      <option value="<%= zone.name %>">
+        <%= zone.name %>
+      </option>
+    <% }) %>
+  </select>
+
+
+  <select id="directionFilter">
+    <option value="">
+      Alla riktningar
+    </option>
+
+    <option value="EARLIER">
+      Flytta tidigare
+    </option>
+
+    <option value="LATER">
+      Flytta senare
+    </option>
+  </select>
+
+
+  <select id="ergonomicFilter">
+    <option value="">
+      All ergonomi
+    </option>
+
+    <option value="LOW_PREFERRED">
+      Låg föredras
+    </option>
+
+    <option value="LOW_STRONGLY_RECOMMENDED">
+      Låg rekommenderas
+    </option>
+  </select>
+
+
+  <input
+    id="recommendationSearch"
+    type="search"
+    placeholder="Sök artikelnummer eller namn..."
+  >
+
+</div>
+
+          </div>
+
+
+          <div class="table-scroll">
+
+            <table class="relocation-table">
+
+              <thead>
+
+                <tr>
+
+                  <th>#</th>
+
+                  <th>
+                    Artikel
+                  </th>
+
+                  <th>
+                    Artikelnamn
+                  </th>
+
+                  <th>
+                    Plockzon
+                  </th>
+
+                  <th>
+                    Nuvarande plats
+                  </th>
+
+                  <th class="movement-column">
+
+                  </th>
+
+                  <th>
+                    Rekommenderad plats
+                  </th>
+
+                  <th>
+                    Gap
+                  </th>
+
+                  <th>
+                    Ergonomi
+                  </th>
+
+                  <th>
+                    Status
+                  </th>
+
+                  <th></th>
+
+                </tr>
+
+              </thead>
+
+
+              <tbody>
+
+                <% recommendations.forEach(
+                  (
+                    recommendation,
+                    index
+                  ) => {
+
+                    const gapPositive =
+                      recommendation
+                        .placementGap >= 0;
+
+                    const zoneClass =
+                      recommendation
+                        .pickZone
+                        .toLowerCase()
+                        .replace(
+                          "ö",
+                          "o"
+                        );
+
+                    let ergonomicLabel =
+                      "Flexibel höjd";
+
+                    let ergonomicClass =
+                      "ergonomic-flexible";
+
+                    if (
+                      recommendation
+                        .ergonomicRecommendation ===
+                        "LOW_PREFERRED"
+                    ) {
+                      ergonomicLabel =
+                        "Låg föredras";
+
+                      ergonomicClass =
+                        "ergonomic-low";
+                    }
+
+                    if (
+                      recommendation
+                        .ergonomicRecommendation ===
+                        "LOW_STRONGLY_RECOMMENDED"
+                    ) {
+                      ergonomicLabel =
+                        "Låg rekommenderas";
+
+                      ergonomicClass =
+                        "ergonomic-strong";
+                    }
+
+                %>
+
+                <tr
+                    class="recommendation-row"
+
+                    data-zone="<%= recommendation.pickZone %>"
+
+                    data-direction="<%= recommendation.direction %>"
+
+                    data-ergonomic="<%= recommendation.ergonomicRecommendation %>"
+
+                    data-search="<%= (
+                        recommendation.articleNumber +
+                        ' ' +
+                        recommendation.name
+                    ).toLowerCase() %>"
+                >
+
+                    <td class="row-number">
+                      <%= index + 1 %>
+                    </td>
+
+
+                    <td class="row-number"></td>
+
+
+                    <td>
+
+                      <div class="article-name">
+                        <%= recommendation.name %>
+                      </div>
+
+                    </td>
+
+
+                    <td>
+
+                      <span
+                        class="
+                          badge
+                          zone-badge
+                          zone-<%= zoneClass %>
+                        "
+                      >
+                        <%= recommendation
+                          .pickZone
+                        %>
+                      </span>
+
+                    </td>
+
+
+                    <td>
+
+                      <div class="location-main">
+
+                        <%= recommendation
+                          .currentZone
+                        %>
+
+                        <%= recommendation
+                          .currentSection
+                        %>
+
+                      </div>
+
+                      <div class="location-sub">
+
+                        Position:
+                        <%= (
+                          recommendation
+                            .currentPosition *
+                          100
+                        ).toFixed(1) %> %
+
+                      </div>
+
+                    </td>
+
+
+                    <td class="movement-column">
+                      →
+                    </td>
+
+
+                    <td>
+
+                      <div class="location-main">
+
+                        <%= recommendation
+                          .recommendedZone
+                        %>
+
+                        <%= recommendation
+                          .recommendedSection
+                        %>
+
+                      </div>
+
+                      <div class="location-sub">
+
+                        Mål:
+                        <%= (
+                          recommendation
+                            .desiredPosition *
+                          100
+                        ).toFixed(1) %> %
+
+                      </div>
+
+                    </td>
+
+
+                    <td>
+
+                      <span
+                        class="
+                          badge
+                          gap-badge
+                          <%= gapPositive
+                            ? 'gap-earlier'
+                            : 'gap-later'
+                          %>
+                        "
+                      >
+
+                        <%= gapPositive
+                          ? "↑"
+                          : "↓"
+                        %>
+
+                        <%= (
+                          recommendation
+                            .placementGap *
+                          100
+                        ).toFixed(1) %> %
+
+                      </span>
+
+                    </td>
+
+
+                    <td>
+
+                      <span
+                        class="
+                          badge
+                          <%= ergonomicClass %>
+                        "
+                      >
+                        <%= ergonomicLabel %>
+                      </span>
+
+                    </td>
+
+
+                    <td>
+
+                      <span
+                        class="badge status-new"
+                      >
+                        Ny
+                      </span>
+
+                    </td>
+
+
+                    <td class="details-arrow">
+                      ›
+                    </td>
+
+                  </tr>
+
+                <% }) %>
+
+              </tbody>
+
+            </table>
+
+          </div>
+
+
+          <div class="table-footer">
+
+            <span id="tableResultSummary">
+            </span>
+
+
+            <div class="table-pagination">
+
+                <button
+                id="previousPage"
+                class="pagination-button"
+                type="button"
+                >
+                ‹
+                </button>
+
+                <span id="pageIndicator">
+                </span>
+
+                <button
+                id="nextPage"
+                class="pagination-button"
+                type="button"
+                >
+                ›
+                </button>
+
+            </div>
+
+</div>
+
+        </section>
+
+        <!-- Calendar -->
+
+        <section class="card calendar-card">
+
+          <div class="card-heading">
+
+            <span>
+              Datatäckning
+            </span>
+
+          </div>
+
+
+          <div class="calendar-header">
+
+            <button
+              class="ghost-button"
+              type="button"
+            >
+              ‹
+            </button>
+
+            <strong>
+              Augusti 2025
+            </strong>
+
+            <button
+              class="ghost-button"
+              type="button"
+            >
+              ›
+            </button>
+
+          </div>
+
+
+          <div class="calendar-weekdays">
+
+            <span>Mån</span>
+            <span>Tis</span>
+            <span>Ons</span>
+            <span>Tor</span>
+            <span>Fre</span>
+            <span>Lör</span>
+            <span>Sön</span>
+
+          </div>
+
+
+          <div class="calendar-grid">
+
+            <% const calendarDays = [
+              28, 29, 30, 31,
+              1, 2, 3,
+              4, 5, 6, 7, 8, 9, 10,
+              11, 12, 13, 14, 15, 16, 17,
+              18, 19, 20, 21, 22, 23, 24,
+              25, 26, 27, 28, 29, 30, 31
+            ]; %>
+
+            <% calendarDays.forEach(
+              (day, index) => {
+
+                const active =
+                  index >= 28 &&
+                  index <= 33;
+
+                const outside =
+                  index <= 3;
+
+            %>
+
+              <div
+                class="
+                  calendar-day
+                  <%= active
+                    ? 'has-data'
+                    : ''
+                  %>
+                  <%= outside
+                    ? 'outside'
+                    : ''
+                  %>
+                "
+              >
+                <%= day %>
+              </div>
+
+            <% }) %>
+
+          </div>
+
+
+          <div class="calendar-legend">
+
+            <span>
+              <i class="legend-dot complete"></i>
+              Komplett data
+            </span>
+
+            <span>
+              <i class="legend-dot partial"></i>
+              Delvis data
+            </span>
+
+            <span>
+              <i class="legend-dot empty"></i>
+              Ingen data
+            </span>
+
+          </div>
+
+        </section>
+
+        
+
+
+
+        <!-- ========================================= -->
+        <!-- Warehouse score history                    -->
+        <!-- ========================================= -->
+
+        <section class="card score-history-card">
+
+          <h2>
+            Lager-score över tid
+          </h2>
+
+
+          <div class="score-placeholder">
+
+            <div class="score-placeholder-line">
+
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+              <span></span>
+
+            </div>
+
+
+            <p>
+              Historik visas här när flera
+              analysperioder finns sparade.
+            </p>
+
+          </div>
+
+        </section>
+
+
+      </div>
+
+    </main>
+
+  </div>
+<script src="/js/dashboard.js"></script>
+</body>
+
+</html>
