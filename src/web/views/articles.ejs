@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artiklar — TrendTornado</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/articles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/"><div class="brand-mark">◉</div><div><div class="brand-name">Trend<span>Tornado</span></div><div class="brand-subtitle">lite hit och lite dit</div></div></a>
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
+        <div class="nav-group">
+          <a class="nav-item" href="/relocations"><span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span></a>
+          <div class="nav-subitems"><a class="nav-subitem" href="/relocations">Alla flyttare</a><a class="nav-subitem" href="/relocations/earlier">Flytta tidigare</a><a class="nav-subitem" href="/relocations/later">Flytta senare</a></div>
+        </div>
+        <a class="nav-item" href="/analysis"><span class="nav-icon">◫</span>Analys</a>
+        <a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a>
+        <a class="nav-item active" href="/articles"><span class="nav-icon">▣</span>Artiklar</a>
+        <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
+        <a class="nav-item" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
+      </nav>
+      <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= period.end.toLocaleDateString("sv-SE") %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString("sv-SE") %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
+    </aside>
+
+    <main class="main-content article-workspace">
+      <header class="page-header article-header">
+        <div><div class="page-eyebrow">Artikelregister</div><h1>Artiklar</h1><p>Sök i masterdata, placering och beräknade prioriteringar.</p></div>
+        <div class="article-total"><strong><%= articles.length.toLocaleString("sv-SE") %></strong><span>artiklar i registret</span></div>
+      </header>
+
+      <section class="article-search-card card">
+        <label class="article-search"><span>⌕</span><input id="articleSearch" type="search" placeholder="Sök artikelnummer eller namn..." autofocus></label>
+        <select id="articlePickZoneFilter"><option value="">Alla plockzoner</option><% filters.pickZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select>
+        <select id="articleTemperatureFilter"><option value="">Alla temperaturer</option><% filters.temperatureZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select>
+        <select id="articleDataFilter"><option value="">All datatäckning</option><option value="ANALYZED">Med analys</option><option value="NO_HISTORY">Utan plockhistorik</option><option value="NO_LOCATION">Utan plockplats</option></select>
+      </section>
+
+      <section class="article-list card">
+        <div class="article-list-heading"><div><h2>Artikelöversikt</h2><p id="articleResultSummary"></p></div><span>Klicka på en artikel för fullständig information</span></div>
+        <div class="article-table-wrap">
+          <table class="article-table">
+            <thead><tr><th>Artikel</th><th>Namn</th><th>Vikt</th><th>Plockzon</th><th>Plats</th><th>Plock</th><th>Prioritet</th><th></th></tr></thead>
+            <tbody>
+              <% articles.forEach((article) => { %>
+                <tr class="article-row" tabindex="0" role="link" data-href="/articles/<%= encodeURIComponent(article.articleNumber) %>" data-search="<%= (article.articleNumber + ' ' + article.name).toLowerCase() %>" data-pick-zone="<%= article.pickZone ?? '' %>" data-temperature="<%= article.temperatureZone ?? '' %>" data-analyzed="<%= article.priorityScore !== null %>" data-has-history="<%= article.pickFrequency > 0 %>" data-has-location="<%= article.currentLocation !== null %>">
+                  <td><strong><%= article.articleNumber %></strong></td>
+                  <td><div class="article-table-name"><%= article.name %></div></td>
+                  <td><%= article.weightKg.toLocaleString("sv-SE", { maximumFractionDigits: 2 }) %> kg</td>
+                  <td><% if (article.pickZone) { %><span class="badge zone-badge"><%= article.pickZone %></span><% } else { %><span class="missing-value">Saknas</span><% } %></td>
+                  <td><% if (article.currentLocation) { %><strong class="article-location"><%= article.currentLocation %></strong><small><%= article.currentSection ?? 'Okänd sektion' %></small><% } else { %><span class="missing-value">Ingen plockplats</span><% } %></td>
+                  <td><strong><%= article.pickFrequency.toLocaleString("sv-SE") %></strong><small><%= article.pickedQuantity.toLocaleString("sv-SE") %> enheter</small></td>
+                  <td><% if (article.priorityScore !== null) { %><div class="priority-cell"><div><i style="width:<%= article.priorityScore * 100 %>%"></i></div><strong><%= article.priorityScore.toFixed(2).replace('.', ',') %></strong></div><% } else { %><span class="missing-value">Ej beräknad</span><% } %></td>
+                  <td class="article-open">›</td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <div class="article-pagination"><span id="articlePageSummary"></span><div><button id="articlePreviousPage" type="button">‹</button><span id="articlePageIndicator"></span><button id="articleNextPage" type="button">›</button></div></div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/articles.js"></script>
+</body>
+</html>

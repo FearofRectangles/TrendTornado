@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inställningar — TrendTornado</title>
+  <link rel="stylesheet" href="/css/app.css"><link rel="stylesheet" href="/css/settings.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/"><div class="brand-mark">◉</div><div><div class="brand-name">Trend<span>Tornado</span></div><div class="brand-subtitle">lite hit och lite dit</div></div></a>
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
+        <div class="nav-group"><a class="nav-item" href="/relocations"><span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span></a><div class="nav-subitems"><a class="nav-subitem" href="/relocations">Alla flyttare</a><a class="nav-subitem" href="/relocations/earlier">Flytta tidigare</a><a class="nav-subitem" href="/relocations/later">Flytta senare</a></div></div>
+        <a class="nav-item" href="/analysis"><span class="nav-icon">◫</span>Analys</a><a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a><a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a><a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a><a class="nav-item active" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
+      </nav>
+      <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= periodEnd?.toLocaleDateString('sv-SE') ?? 'Saknas' %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString('sv-SE') %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
+    </aside>
+
+    <main class="main-content settings-workspace">
+      <header class="page-header settings-header"><div><div class="page-eyebrow">Modellens regler</div><h1>Inställningar</h1><p>De få värden som styr hur TrendTornado analyserar och rekommenderar.</p></div></header>
+      <% if (saved) { %><div class="settings-message success">✓ Inställningarna är sparade och används vid nästa sidladdning.</div><% } %>
+      <% if (error) { %><div class="settings-message error"><strong>Inställningarna kunde inte sparas.</strong><span><%= error %></span></div><% } %>
+
+      <form id="settingsForm" method="post" action="/settings">
+        <section class="settings-section card">
+          <div class="settings-section-intro"><span>01</span><h2>Analys</h2><p>Reglerna som avgör vilka artiklar som prioriteras och när en avvikelse blir en flyttkandidat.</p></div>
+          <div class="settings-fields">
+            <label class="setting-field"><div><strong>Flyttgräns</strong><p>Artiklar med ett absolut placement gap över denna nivå visas som flyttkandidater.</p></div><div class="number-input"><input name="movementThreshold" type="number" min="0" max="100" step="1" required value="<%= settings.analysis.movementThreshold * 100 %>"><span>%</span></div></label>
+            <div class="priority-settings"><div class="priority-heading"><div><strong>Prioritering</strong><p>Vikterna måste tillsammans bli 100 %.</p></div><output id="weightTotal">100 %</output></div><div class="priority-inputs"><label><span>Plockfrekvens</span><div class="number-input"><input id="frequencyWeight" name="frequencyWeight" type="number" min="0" max="100" step="1" required value="<%= settings.analysis.frequencyWeight * 100 %>"><span>%</span></div></label><label><span>Hanterad vikt</span><div class="number-input"><input id="handlingWeight" name="handlingWeight" type="number" min="0" max="100" step="1" required value="<%= settings.analysis.handlingWeight * 100 %>"><span>%</span></div></label></div></div>
+          </div>
+        </section>
+
+        <section class="settings-section card">
+          <div class="settings-section-intro"><span>02</span><h2>Ergonomi</h2><p>Gränserna gäller både artikelns styckvikt och den genomsnittliga hanterade vikten per plock.</p></div>
+          <div class="settings-fields"><label class="setting-field"><div><strong>Låg placering föredras från</strong><p>Artikeln markeras som ergonomiskt prioriterad.</p></div><div class="number-input"><input name="lowPreferredKg" type="number" min="0" step="0.1" required value="<%= settings.ergonomics.lowPreferredKg %>"><span>kg</span></div></label><label class="setting-field"><div><strong>Låg placering rekommenderas starkt från</strong><p>Måste vara lika med eller högre än gränsen ovan.</p></div><div class="number-input"><input name="lowStronglyRecommendedKg" type="number" min="0" step="0.1" required value="<%= settings.ergonomics.lowStronglyRecommendedKg %>"><span>kg</span></div></label></div>
+        </section>
+
+        <section class="settings-section card">
+          <div class="settings-section-intro"><span>03</span><h2>Avståndsmodell</h2><p>Standardmåttet används för att uppskatta gångavstånd mellan fack i samma plockflöde.</p></div>
+          <div class="settings-fields"><label class="setting-field featured-setting"><div><strong>Standardfackets bredd</strong><p>Avstånd från ett facks start till nästa facks start. Kan senare skrivas över per zon.</p></div><div class="number-input"><input name="standardBayWidthMeters" type="number" min="0.1" max="20" step="0.1" required value="<%= settings.distance.standardBayWidthMeters %>"><span>meter</span></div></label><div class="coming-setting"><div><strong>Zonövergångar</strong><p>Manuella avstånd mellan angränsande zoner läggs till när distansmotorn byggs.</p></div><span>Kommer härnäst</span></div></div>
+        </section>
+
+        <div class="settings-savebar"><div><strong>Spara modellregler</strong><span>En ny analys beräknas automatiskt nästa gång en sida laddas.</span></div><button id="saveSettings" type="submit">Spara inställningar</button></div>
+      </form>
+
+      <section class="settings-section card readonly-section">
+        <div class="settings-section-intro"><span>04</span><h2>Lagerregler</h2><p>Dessa mappings kommer från domänmodellen och visar hur fysiska zonnummer tolkas.</p></div>
+        <div class="settings-table-wrap"><table class="settings-table"><thead><tr><th>Fysisk zon</th><th>Temperatur</th><th>Plockzon</th></tr></thead><tbody><% zoneProfiles.forEach((profile) => { %><tr><td><%= String(profile.from).padStart(2, '0') %>–<%= String(profile.to).padStart(2, '0') %></td><td><span class="mapping-temperature"><%= profile.temperatureZone %></span></td><td><strong><%= profile.pickZoneType %></strong></td></tr><% }) %></tbody></table></div>
+      </section>
+
+      <section class="settings-section card readonly-section data-sources-section">
+        <div class="settings-section-intro"><span>05</span><h2>Datakällor</h2><p>Filerna som den aktuella analysen läser från.</p></div>
+        <div class="data-source-list"><% sources.forEach((source) => { %><article><i>✓</i><div><strong><%= source.label %></strong><span><%= source.fileName %></span></div><b><%= source.count.toLocaleString('sv-SE') %> <%= source.unit %></b><time datetime="<%= source.modifiedAt.toISOString() %>">Ändrad <%= source.modifiedAt.toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) %></time></article><% }) %></div>
+      </section>
+    </main>
+  </div>
+  <script src="/js/settings.js"></script>
+</body>
+</html>

@@ -28,6 +28,10 @@ const zoneProfiles = Object.freeze([
   },
 ]);
 
+export function getZoneProfiles() {
+  return zoneProfiles.map((profile) => ({ ...profile }));
+}
+
 export function getTemperatureZoneFromZoneCode(zoneCode) {
   return getZoneProfile(zoneCode).temperatureZone;
 }

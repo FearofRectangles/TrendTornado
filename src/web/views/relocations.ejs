@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= title %> — TrendTornado</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/relocations.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/">
+        <div class="brand-mark">◉</div>
+        <div>
+          <div class="brand-name">Trend<span>Tornado</span></div>
+          <div class="brand-subtitle">lite hit och lite dit</div>
+        </div>
+      </a>
+
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
+        <div class="nav-group">
+          <a class="nav-item active" href="/relocations">
+            <span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span>
+          </a>
+          <div class="nav-subitems">
+            <a class="nav-subitem <%= activeView === 'all' ? 'active' : '' %>" href="/relocations">Alla flyttare</a>
+            <a class="nav-subitem <%= activeView === 'earlier' ? 'active' : '' %>" href="/relocations/earlier">Flytta tidigare</a>
+            <a class="nav-subitem <%= activeView === 'later' ? 'active' : '' %>" href="/relocations/later">Flytta senare</a>
+          </div>
+        </div>
+        <a class="nav-item" href="/analysis"><span class="nav-icon">◫</span>Analys</a>
+        <a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a>
+        <a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a>
+        <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
+        <a class="nav-item" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
+      </nav>
+
+      <div class="latest-analysis">
+        <div class="latest-analysis-title">Senaste analys</div>
+        <div><%= period.end.toLocaleDateString("sv-SE") %></div>
+        <div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString("sv-SE") %> plockrader</div>
+        <div class="analysis-ready"><span class="status-dot"></span>Klar</div>
+      </div>
+    </aside>
+
+    <main class="main-content relocation-workspace">
+      <header class="page-header relocation-header">
+        <div>
+          <div class="page-eyebrow">Operativ arbetsyta</div>
+          <h1>Flyttare</h1>
+          <p>Prioritera, granska och planera lagerflyttar från analysens rekommendationer.</p>
+        </div>
+        <div class="date-range"><%= period.start.toISOString().slice(0, 10) %><span>–</span><%= period.end.toISOString().slice(0, 10) %></div>
+      </header>
+
+      <section class="relocation-summary" aria-label="Sammanfattning">
+        <article class="summary-card primary-summary"><span>Flyttkandidater</span><strong><%= summary.total.toLocaleString("sv-SE") %></strong><small>gap ≥ <%= (strongGapThreshold * 100).toFixed(0) %> %</small></article>
+        <article class="summary-card"><i class="summary-arrow earlier">↑</i><div><strong><%= summary.earlier.toLocaleString("sv-SE") %></strong><span>tidigare</span></div></article>
+        <article class="summary-card"><i class="summary-arrow later">↓</i><div><strong><%= summary.later.toLocaleString("sv-SE") %></strong><span>senare</span></div></article>
+        <article class="summary-card ergonomic-summary"><i>♙</i><div><strong><%= summary.ergonomic.toLocaleString("sv-SE") %></strong><span>ergonomiskt prioriterade</span></div></article>
+      </section>
+
+      <section class="relocation-filters card">
+        <div class="filter-heading">
+          <div><h2>Filtrera arbetslistan</h2><p>Kombinera filter för att hitta rätt flyttar.</p></div>
+          <button id="clearFilters" class="clear-filters" type="button">Rensa filter</button>
+        </div>
+        <div class="filter-grid">
+          <label>Plockzon<select id="pickZoneFilter"><option value="">Alla plockzoner</option><% filters.pickZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
+          <label>Riktning<select id="relocationDirectionFilter"><option value="">Alla riktningar</option><option value="EARLIER">Flytta tidigare</option><option value="LATER">Flytta senare</option></select></label>
+          <label>Ergonomi<select id="relocationErgonomicFilter"><option value="">All ergonomi</option><option value="LOW_PREFERRED">Låg föredras</option><option value="LOW_STRONGLY_RECOMMENDED">Låg rekommenderas</option></select></label>
+          <label>Nuvarande zon<select id="currentZoneFilter"><option value="">Alla zoner</option><% filters.currentZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
+          <label>Rekommenderad zon<select id="recommendedZoneFilter"><option value="">Alla zoner</option><% filters.recommendedZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
+          <label>Minsta gap<div class="gap-filter"><input id="minimumGapFilter" type="range" min="20" max="100" value="20" step="5"><output id="minimumGapValue">20 %</output></div></label>
+          <label class="search-filter">Sök artikel<input id="relocationSearch" type="search" placeholder="Artikelnummer eller namn..."></label>
+        </div>
+      </section>
+
+      <section class="relocation-list card">
+        <div class="list-heading">
+          <div><h2>Arbetslista</h2><p id="relocationResultSummary"></p></div>
+          <div class="list-legend"><span><i class="legend-earlier"></i>Tidigare</span><span><i class="legend-later"></i>Senare</span></div>
+        </div>
+        <div class="relocation-table-wrap">
+          <table class="work-table">
+            <thead><tr><th>Artikel</th><th>Namn</th><th>Plockzon</th><th>Nu</th><th></th><th>Rekommenderat</th><th>Gap</th><th>Ergonomi</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              <% recommendations.forEach((item) => { const earlier = item.direction === "EARLIER"; %>
+                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-pick-zone="<%= item.pickZone %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
+                  <td><strong><%= item.articleNumber %></strong></td>
+                  <td><div class="work-name"><%= item.name %></div></td>
+                  <td><span class="badge zone-badge"><%= item.pickZone %></span></td>
+                  <td><strong class="work-location"><%= item.currentZone %> <%= item.currentSection %></strong><small><%= (item.currentPosition * 100).toFixed(1) %> %</small></td>
+                  <td class="work-direction <%= earlier ? 'earlier' : 'later' %>"><%= earlier ? '↑' : '↓' %></td>
+                  <td><strong class="work-location"><%= item.recommendedZone %> <%= item.recommendedSection %></strong><small><%= (item.desiredPosition * 100).toFixed(1) %> %</small></td>
+                  <td><span class="badge <%= earlier ? 'gap-earlier' : 'gap-later' %>"><%= earlier ? '+' : '−' %><%= Math.abs(item.placementGap * 100).toFixed(1) %> %</span></td>
+                  <td><span class="ergonomic-dot <%= item.ergonomicRecommendation.toLowerCase() %>" title="<%= item.ergonomicRecommendation %>"></span><%= item.ergonomicRecommendation === 'LOW_STRONGLY_RECOMMENDED' ? 'Låg rekommenderas' : item.ergonomicRecommendation === 'LOW_PREFERRED' ? 'Låg föredras' : 'Flexibel' %></td>
+                  <td><span class="badge work-status" data-status-for="<%= item.articleNumber %>">Ny</span></td>
+                  <td class="open-arrow">›</td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <div class="work-pagination"><span id="workPageSummary"></span><div><button id="workPreviousPage" type="button">‹</button><span id="workPageIndicator"></span><button id="workNextPage" type="button">›</button></div></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <aside id="relocationDrawer" class="relocation-drawer" aria-hidden="true" aria-labelledby="drawerTitle">
+    <button id="closeDrawer" class="drawer-close" type="button" aria-label="Stäng">×</button>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <script id="relocationData" type="application/json"><%- JSON.stringify(recommendations).replace(/</g, "\\u003c") %></script>
+  <script src="/js/relocations.js"></script>
+</body>
+</html>

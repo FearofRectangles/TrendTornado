@@ -6,6 +6,8 @@ export class ErgonomicRecommendationEngine {
   static evaluate({
     weightKg,
     averageHandledWeightPerPick,
+    lowPreferredKg = 4,
+    lowStronglyRecommendedKg = 8,
   }) {
     if (
       !Number.isFinite(weightKg) ||
@@ -27,6 +29,17 @@ export class ErgonomicRecommendationEngine {
       );
     }
 
+    if (
+      !Number.isFinite(lowPreferredKg) ||
+      lowPreferredKg < 0 ||
+      !Number.isFinite(lowStronglyRecommendedKg) ||
+      lowStronglyRecommendedKg < lowPreferredKg
+    ) {
+      throw new Error(
+        "Ergonomic thresholds are invalid.",
+      );
+    }
+
     // --------------------------------------------------
     // Strong recommendation for a low placement.
     //
@@ -36,8 +49,8 @@ export class ErgonomicRecommendationEngine {
     // --------------------------------------------------
 
     if (
-      weightKg >= 8 ||
-      averageHandledWeightPerPick >= 8
+      weightKg >= lowStronglyRecommendedKg ||
+      averageHandledWeightPerPick >= lowStronglyRecommendedKg
     ) {
       return {
         recommendation:
@@ -58,8 +71,8 @@ export class ErgonomicRecommendationEngine {
     // --------------------------------------------------
 
     if (
-      weightKg >= 4 ||
-      averageHandledWeightPerPick >= 4
+      weightKg >= lowPreferredKg ||
+      averageHandledWeightPerPick >= lowPreferredKg
     ) {
       return {
         recommendation:

@@ -27,6 +27,14 @@ import {
 } from "../../domain/simulation/WarehouseSimulationEngine.js";
 
 import {
+  ProjectedLayoutBuilder,
+} from "../../domain/simulation/ProjectedLayoutBuilder.js";
+import {
+  DEFAULT_SETTINGS,
+  validateSettings,
+} from "../../config/DefaultSettings.js";
+
+import {
   enrichArticleStatistics,
 } from "./EnrichArticleStatistics.js";
 
@@ -66,7 +74,11 @@ export class WarehouseAnalysisService {
     articles,
     locations,
     placementRecords,
+    settings = DEFAULT_SETTINGS,
   }) {
+
+    const activeSettings =
+      validateSettings(settings);
 
     if (
       !Array.isArray(historyRecords) ||
@@ -79,7 +91,9 @@ export class WarehouseAnalysisService {
       );
     }
 
-    if (historyRecords.length === 0) {
+    if (
+      historyRecords.length === 0
+    ) {
       throw new Error(
         "No valid pick history records found.",
       );
@@ -203,42 +217,6 @@ export class WarehouseAnalysisService {
 
 
     // --------------------------------------------------
-    // Historical simulation / current layout baseline
-    // --------------------------------------------------
-
-const historicalBuildResult =
-  HistoricalOrderBuilder
-    .buildWithDiagnostics({
-      historyRecords,
-
-      articles:
-        positionedArticles,
-    });
-
-
-const historicalOrders =
-  historicalBuildResult.orders;
-
-
-const simulationDiagnostics =
-  historicalBuildResult.diagnostics;
-
-
-const baselineSimulation =
-  WarehouseSimulationEngine.simulate({
-    orders:
-      historicalOrders,
-  });
-
-
-const simulationCoverage =
-  simulationDiagnostics.totalRecords === 0
-    ? 0
-    : simulationDiagnostics.includedRecords /
-      simulationDiagnostics.totalRecords;
-
-
-    // --------------------------------------------------
     // Placement evaluation
     // --------------------------------------------------
 
@@ -246,10 +224,135 @@ const simulationCoverage =
       PlacementEvaluationEngine.evaluate(
         positionedArticles,
         {
-          frequencyWeight: 0.7,
-          handlingWeight: 0.3,
+          frequencyWeight:
+            activeSettings.analysis.frequencyWeight,
+
+          handlingWeight:
+            activeSettings.analysis.handlingWeight,
         },
       );
+
+
+    // --------------------------------------------------
+    // Historical simulation / current layout baseline
+    // --------------------------------------------------
+
+    const historicalBuildResult =
+      HistoricalOrderBuilder
+        .buildWithDiagnostics({
+          historyRecords,
+
+          articles:
+            positionedArticles,
+        });
+
+    const historicalOrders =
+      historicalBuildResult.orders;
+
+    const simulationDiagnostics =
+      historicalBuildResult.diagnostics;
+
+    const baselineSimulation =
+      WarehouseSimulationEngine.simulate({
+        orders:
+          historicalOrders,
+      });
+
+
+    // --------------------------------------------------
+    // Projected optimized layout
+    // --------------------------------------------------
+
+    const movementThreshold =
+      activeSettings.analysis.movementThreshold;
+
+    const projectedOrders =
+      ProjectedLayoutBuilder.build({
+        historicalOrders,
+
+        evaluations:
+          placementEvaluations,
+
+        movementThreshold,
+      });
+
+    const optimizedSimulation =
+      WarehouseSimulationEngine.simulate({
+        orders:
+          projectedOrders,
+      });
+
+
+    // --------------------------------------------------
+    // Simulation comparison
+    // --------------------------------------------------
+
+    const baselineMultiPickSpan =
+      baselineSimulation
+        .averageMultiPickSpan;
+
+    const optimizedMultiPickSpan =
+      optimizedSimulation
+        .averageMultiPickSpan;
+
+    const pickSpanImprovement =
+      baselineMultiPickSpan === 0
+        ? 0
+        : (
+            baselineMultiPickSpan -
+            optimizedMultiPickSpan
+          ) /
+          baselineMultiPickSpan;
+
+    const baselineWeightOrder =
+      baselineSimulation
+        .weightOrderScore;
+
+    const optimizedWeightOrder =
+      optimizedSimulation
+        .weightOrderScore;
+
+    const weightOrderImprovement =
+      optimizedWeightOrder -
+      baselineWeightOrder;
+
+    const simulationComparison = {
+      multiPickSpan: {
+        before:
+          baselineMultiPickSpan,
+
+        after:
+          optimizedMultiPickSpan,
+
+        relativeImprovement:
+          pickSpanImprovement,
+      },
+
+      weightOrder: {
+        before:
+          baselineWeightOrder,
+
+        after:
+          optimizedWeightOrder,
+
+        percentagePointImprovement:
+          weightOrderImprovement,
+      },
+    };
+
+
+    // --------------------------------------------------
+    // Simulation coverage
+    // --------------------------------------------------
+
+    const simulationCoverage =
+      simulationDiagnostics.totalRecords ===
+      0
+        ? 0
+        : simulationDiagnostics
+            .includedRecords /
+          simulationDiagnostics
+            .totalRecords;
 
 
     // --------------------------------------------------
@@ -281,8 +384,12 @@ const simulationCoverage =
     const rankedEvaluations =
       placementEvaluations.toSorted(
         (a, b) =>
-          b.placementGap -
-          a.placementGap,
+          Math.abs(
+            b.placementGap,
+          ) -
+          Math.abs(
+            a.placementGap,
+          ),
       );
 
 
@@ -304,7 +411,8 @@ const simulationCoverage =
 
       if (
         !article ||
-        article.positionedPickLocations
+        article
+          .positionedPickLocations
           .length === 0
       ) {
         continue;
@@ -328,8 +436,12 @@ const simulationCoverage =
       }
 
       evaluationsByPickZone
-        .get(pickZoneType)
-        .push(evaluation);
+        .get(
+          pickZoneType,
+        )
+        .push(
+          evaluation,
+        );
     }
 
     const placementDiagnostics =
@@ -406,6 +518,12 @@ const simulationCoverage =
                   averageHandledWeightPerPick:
                     evaluation
                       .averageHandledWeightPerPick,
+
+                  lowPreferredKg:
+                    activeSettings.ergonomics.lowPreferredKg,
+
+                  lowStronglyRecommendedKg:
+                    activeSettings.ergonomics.lowStronglyRecommendedKg,
                 });
 
             return {
@@ -431,19 +549,22 @@ const simulationCoverage =
     const articlesWithPickLocation =
       positionedArticles.filter(
         (article) =>
-          article.pickLocations.length > 0,
+          article.pickLocations.length >
+          0,
       );
 
     const articlesWithoutPickLocation =
       positionedArticles.filter(
         (article) =>
-          article.pickLocations.length === 0,
+          article.pickLocations.length ===
+          0,
       );
 
     const articlesWithMultiplePickLocations =
       positionedArticles.filter(
         (article) =>
-          article.pickLocations.length > 1,
+          article.pickLocations.length >
+          1,
       );
 
     const articlesWithPosition =
@@ -466,8 +587,11 @@ const simulationCoverage =
 
     return {
       period: {
-        start: periodStart,
-        end: periodEnd,
+        start:
+          periodStart,
+
+        end:
+          periodEnd,
       },
 
       warehouse: {
@@ -477,7 +601,9 @@ const simulationCoverage =
       },
 
       placements: {
-        result: placementResult,
+        result:
+          placementResult,
+
         pickPlacements,
       },
 
@@ -518,15 +644,25 @@ const simulationCoverage =
       simulation: {
         historicalOrders,
 
+        projectedOrders,
+
         baseline:
           baselineSimulation,
+
+        optimized:
+          optimizedSimulation,
+
+        comparison:
+          simulationComparison,
+
+        movementThreshold,
 
         coverage:
           simulationCoverage,
 
         diagnostics:
           simulationDiagnostics,
-},
+      },
     };
   }
 }

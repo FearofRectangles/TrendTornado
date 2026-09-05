@@ -9,6 +9,10 @@ import {
 import {
   DataFiles,
 } from "../../config/DataFiles.js";
+import {
+  buildRelocationViewModel,
+} from "../viewmodels/buildRelocationViewModel.js";
+import { SettingsRepository } from "../../infrastructure/settings/SettingsRepository.js";
 
 
 export class DashboardController {
@@ -30,6 +34,9 @@ export class DashboardController {
             DataFiles.placements,
         });
 
+      const settings =
+        await SettingsRepository.load();
+
 
       const analysis =
         WarehouseAnalysisService.analyze({
@@ -44,6 +51,8 @@ export class DashboardController {
 
           placementRecords:
             data.placementRecords,
+
+          settings,
         });
 
 
@@ -51,87 +60,8 @@ export class DashboardController {
       // Recommendations
       // --------------------------------------------------
 
-      const recommendations =
-        analysis.recommendations
-
-          .filter(
-            (recommendation) =>
-              recommendation
-                .recommendedArea !== null,
-          )
-
-          .map(
-            (recommendation) => {
-              const {
-                evaluation,
-                article,
-                currentLocation,
-                currentPhysicalPosition,
-                recommendedArea,
-                ergonomicRecommendation,
-              } = recommendation;
-
-
-              return {
-                articleNumber:
-                  article.articleNumber,
-
-                name:
-                  article.name ??
-                  "UNKNOWN",
-
-                pickZone:
-                  currentLocation
-                    .pickZoneType,
-
-                currentLocation:
-                  currentLocation
-                    .locationCode,
-
-                currentZone:
-                  currentLocation.zone,
-
-                currentSection:
-                  currentPhysicalPosition
-                    ?.zoneSection ??
-                  "UNKNOWN",
-
-                currentPosition:
-                  evaluation
-                    .currentPosition,
-
-                recommendedZone:
-                  recommendedArea.zone,
-
-                recommendedSection:
-                  recommendedArea.section,
-
-                desiredPosition:
-                  evaluation
-                    .desiredPosition,
-
-                placementGap:
-                  evaluation
-                    .placementGap,
-
-                direction:
-                  evaluation.placementGap >= 0
-                    ? "EARLIER"
-                    : "LATER",
-
-                ergonomicRecommendation:
-                  ergonomicRecommendation
-                    .recommendation,
-
-                averageHandledWeightPerPick:
-                  evaluation
-                    .averageHandledWeightPerPick,
-
-                status:
-                  "NEW",
-              };
-            },
-          );
+      const relocationCandidates =
+        buildRelocationViewModel(analysis);
 
 
       // --------------------------------------------------
@@ -139,33 +69,11 @@ export class DashboardController {
       // --------------------------------------------------
 
       const strongGapThreshold =
-        0.20;
-
-
-      const relocationCandidates =
-        recommendations
-
-          .filter(
-            (recommendation) =>
-              Math.abs(
-                recommendation
-                  .placementGap,
-              ) >= strongGapThreshold,
-          )
-
-          .toSorted(
-            (a, b) =>
-              Math.abs(
-                b.placementGap,
-              ) -
-              Math.abs(
-                a.placementGap,
-              ),
-          );
+        analysis.simulation.movementThreshold;
 
 
       const lowPlacementRecommendations =
-        recommendations.filter(
+        relocationCandidates.filter(
           (recommendation) =>
             recommendation
               .ergonomicRecommendation ===
@@ -187,7 +95,8 @@ export class DashboardController {
 
       for (
         const entry
-        of analysis.warehouse.pickSequence
+        of analysis.warehouse
+          .pickSequence
       ) {
         const pickZone =
           entry.pickZoneType;
@@ -228,7 +137,7 @@ export class DashboardController {
 
 
       // --------------------------------------------------
-      // Historical simulation
+      // Simulation
       // --------------------------------------------------
 
       const simulation =
@@ -239,6 +148,14 @@ export class DashboardController {
         simulation?.baseline;
 
 
+      const simulationOptimized =
+        simulation?.optimized;
+
+
+      const simulationComparison =
+        simulation?.comparison;
+
+
       const simulationDiagnostics =
         simulation?.diagnostics;
 
@@ -247,8 +164,15 @@ export class DashboardController {
         available:
           Boolean(
             simulationBaseline &&
+            simulationOptimized &&
+            simulationComparison &&
             simulationDiagnostics,
           ),
+
+
+        // ----------------------------------------------
+        // Coverage
+        // ----------------------------------------------
 
         snapshotCoverage:
           simulation?.coverage ?? 0,
@@ -274,41 +198,10 @@ export class DashboardController {
             ?.recordsExcludedByDocumentFilter ??
           0,
 
-        simulationGroups:
-          simulationDiagnostics
-            ?.simulatedGroups ?? 0,
 
-        simulatedPicks:
-          simulationBaseline
-            ?.totalPicks ?? 0,
-
-        singlePickGroups:
-          simulationBaseline
-            ?.singlePickGroups ?? 0,
-
-        multiPickGroups:
-          simulationBaseline
-            ?.multiPickGroups ?? 0,
-
-        averageMultiPickSpan:
-          simulationBaseline
-            ?.averageMultiPickSpan ?? 0,
-
-        averagePickSpan:
-          simulationBaseline
-            ?.averagePickSpan ?? 0,
-
-        weightOrderScore:
-          simulationBaseline
-            ?.weightOrderScore ?? 0,
-
-        correctlyOrderedPairs:
-          simulationBaseline
-            ?.correctlyOrderedPairs ?? 0,
-
-        comparablePairs:
-          simulationBaseline
-            ?.comparablePairs ?? 0,
+        // ----------------------------------------------
+        // Historical documents
+        // ----------------------------------------------
 
         totalDocuments:
           simulationDiagnostics
@@ -327,6 +220,129 @@ export class DashboardController {
           simulationDiagnostics
             ?.uncoveredDocuments ?? 0,
 
+
+        // ----------------------------------------------
+        // Simulation population
+        // ----------------------------------------------
+
+        simulationGroups:
+          simulationBaseline
+            ?.simulatedOrders ?? 0,
+
+        simulatedPicks:
+          simulationBaseline
+            ?.totalPicks ?? 0,
+
+        singlePickGroups:
+          simulationBaseline
+            ?.singlePickGroups ?? 0,
+
+        multiPickGroups:
+          simulationBaseline
+            ?.multiPickGroups ?? 0,
+
+
+        // ----------------------------------------------
+        // Current layout
+        // ----------------------------------------------
+
+        baseline: {
+          averagePickSpan:
+            simulationBaseline
+              ?.averagePickSpan ?? 0,
+
+          averageMultiPickSpan:
+            simulationBaseline
+              ?.averageMultiPickSpan ?? 0,
+
+          weightOrderScore:
+            simulationBaseline
+              ?.weightOrderScore ?? 0,
+
+          correctlyOrderedPairs:
+            simulationBaseline
+              ?.correctlyOrderedPairs ?? 0,
+
+          comparablePairs:
+            simulationBaseline
+              ?.comparablePairs ?? 0,
+        },
+
+
+        // ----------------------------------------------
+        // Optimized layout
+        // ----------------------------------------------
+
+        optimized: {
+          averagePickSpan:
+            simulationOptimized
+              ?.averagePickSpan ?? 0,
+
+          averageMultiPickSpan:
+            simulationOptimized
+              ?.averageMultiPickSpan ?? 0,
+
+          weightOrderScore:
+            simulationOptimized
+              ?.weightOrderScore ?? 0,
+
+          correctlyOrderedPairs:
+            simulationOptimized
+              ?.correctlyOrderedPairs ?? 0,
+
+          comparablePairs:
+            simulationOptimized
+              ?.comparablePairs ?? 0,
+        },
+
+
+        // ----------------------------------------------
+        // Improvement
+        // ----------------------------------------------
+
+        comparison: {
+          multiPickSpan: {
+            before:
+              simulationComparison
+                ?.multiPickSpan
+                ?.before ?? 0,
+
+            after:
+              simulationComparison
+                ?.multiPickSpan
+                ?.after ?? 0,
+
+            relativeImprovement:
+              simulationComparison
+                ?.multiPickSpan
+                ?.relativeImprovement ??
+              0,
+          },
+
+          weightOrder: {
+            before:
+              simulationComparison
+                ?.weightOrder
+                ?.before ?? 0,
+
+            after:
+              simulationComparison
+                ?.weightOrder
+                ?.after ?? 0,
+
+            percentagePointImprovement:
+              simulationComparison
+                ?.weightOrder
+                ?.percentagePointImprovement ??
+              0,
+          },
+        },
+
+
+        // ----------------------------------------------
+        // Diagnostics
+        // ----------------------------------------------
+
         invalidWeight:
           simulationDiagnostics
             ?.invalidWeight ?? 0,
@@ -338,6 +354,16 @@ export class DashboardController {
         multiplePickLocations:
           simulationDiagnostics
             ?.multiplePickLocations ?? 0,
+
+
+        // ----------------------------------------------
+        // Configuration
+        // ----------------------------------------------
+
+        movementThreshold:
+          simulation
+            ?.movementThreshold ??
+          strongGapThreshold,
       };
 
 
@@ -498,7 +524,9 @@ function buildCalendar({
 
 
     const key =
-      toDateKey(date);
+      toDateKey(
+        date,
+      );
 
 
     days.push({
@@ -550,7 +578,9 @@ function buildCalendar({
 }
 
 
-function toDateKey(date) {
+function toDateKey(
+  date,
+) {
   const year =
     date.getFullYear();
 
@@ -571,11 +601,15 @@ function toDateKey(date) {
     );
 
 
-  return `${year}-${month}-${day}`;
+  return (
+    `${year}-${month}-${day}`
+  );
 }
 
 
-function capitalizeFirst(value) {
+function capitalizeFirst(
+  value,
+) {
   if (!value) {
     return value;
   }

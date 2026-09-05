@@ -98,3 +98,17 @@ test("rejects invalid handled weight", () => {
     /handled weight/i,
   );
 });
+
+test("uses configurable ergonomic thresholds", () => {
+  const result = ErgonomicRecommendationEngine.evaluate({
+    weightKg: 6,
+    averageHandledWeightPerPick: 6,
+    lowPreferredKg: 7,
+    lowStronglyRecommendedKg: 10,
+  });
+
+  assert.equal(
+    result.recommendation,
+    ErgonomicRecommendation.HIGH_OK,
+  );
+});

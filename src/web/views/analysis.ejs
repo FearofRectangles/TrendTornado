@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analys — TrendTornado</title>
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/analysis.css">
+</head>
+<body>
+  <% const maxFrequencyBin = Math.max(...model.frequency.bins.map((bin) => bin.count), 1); %>
+  <% const maxWeightBin = Math.max(...model.weight.bins.map((bin) => bin.count), 1); %>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/"><div class="brand-mark">◉</div><div><div class="brand-name">Trend<span>Tornado</span></div><div class="brand-subtitle">lite hit och lite dit</div></div></a>
+      <nav class="sidebar-nav">
+        <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
+        <div class="nav-group"><a class="nav-item" href="/relocations"><span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span></a><div class="nav-subitems"><a class="nav-subitem" href="/relocations">Alla flyttare</a><a class="nav-subitem" href="/relocations/earlier">Flytta tidigare</a><a class="nav-subitem" href="/relocations/later">Flytta senare</a></div></div>
+        <a class="nav-item active" href="/analysis"><span class="nav-icon">◫</span>Analys</a>
+        <a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a>
+        <a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a>
+        <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
+        <a class="nav-item" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
+      </nav>
+      <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= period.end.toLocaleDateString("sv-SE") %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString("sv-SE") %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
+    </aside>
+
+    <main class="main-content analysis-workspace">
+      <header class="page-header analysis-header">
+        <div><div class="page-eyebrow">Förklara motorn</div><h1>Analys</h1><p>Varför tycker TrendTornado att lagret bör se ut så här?</p></div>
+        <div class="date-range"><%= period.start.toISOString().slice(0, 10) %><span>–</span><%= period.end.toISOString().slice(0, 10) %></div>
+      </header>
+
+      <section class="analysis-section frequency-section">
+        <div class="analysis-copy"><span class="section-number">01</span><h2>Plockfrekvens</h2><p>De flesta artiklar plockas få gånger medan ett litet antal står för mycket av aktiviteten. Därför använder motorn magnitudbaserad log-normalisering: skillnaden mellan 1 och 20 stopp ska spela roll, även om båda hamnar långt ned i en percentilrankning.</p><div class="analysis-facts"><div><strong><%= model.frequency.articles.toLocaleString('sv-SE') %></strong><span>artiklar med historik</span></div><div><strong><%= model.frequency.singleStopArticles.toLocaleString('sv-SE') %></strong><span>med endast ett stopp</span></div><div><strong><%= model.frequency.maximum.toLocaleString('sv-SE') %></strong><span>högsta frekvens</span></div></div></div>
+        <div class="analysis-card card"><div class="chart-heading"><div><h3>Fördelning av antal stopp</h3><p>Antal artiklar per frekvensintervall</p></div><span>Long-tail</span></div><div class="histogram" aria-label="Fördelning av plockfrekvens"><div class="histogram-grid"><i></i><i></i><i></i><i></i></div><div class="histogram-bars"><% model.frequency.bins.forEach((bin) => { %><div class="histogram-column"><div class="histogram-count"><%= bin.count.toLocaleString('sv-SE') %></div><div class="histogram-bar-wrap"><i style="height:<%= Math.max(3, bin.count / maxFrequencyBin * 100) %>%"></i></div><span><%= bin.label %></span></div><% }) %></div></div><div class="chart-axis-label"><span>få stopp</span><span>många stopp</span></div></div>
+      </section>
+
+      <section class="analysis-section scatter-section">
+        <div class="analysis-copy"><span class="section-number">02</span><h2>Position kontra prioritet</h2><p>Varje punkt är en artikel. En artikel högt upp har hög prioritet; ligger den samtidigt långt åt höger står den sent i flödet trots att den borde komma tidigt. Gröna och orange punkter passerar flyttgränsen på 20 procentenheter.</p><div class="scatter-legend"><span><i class="neutral"></i>Inom gräns</span><span><i class="earlier"></i>Flytta tidigare</span><span><i class="later"></i>Flytta senare</span></div></div>
+        <div class="analysis-card card scatter-card"><div class="chart-heading"><div><h3>Placeringens träffsäkerhet</h3><p><%= model.scatter.points.length.toLocaleString('sv-SE') %> utvärderade artiklar · <%= model.scatter.candidates.toLocaleString('sv-SE') %> kandidater</p></div><span>Position → Prioritet</span></div><div class="scatter-frame"><canvas id="priorityScatter" role="img" aria-label="Punktdiagram över nuvarande position och prioritet"></canvas><div id="scatterTooltip" class="scatter-tooltip" hidden></div></div><div class="scatter-x-label">Nuvarande position i plockflödet</div></div>
+      </section>
+
+      <section class="analysis-section weight-section">
+        <div class="analysis-copy"><span class="section-number">03</span><h2>Vikt och ergonomi</h2><p>Hanterad vikt beräknas som artikelvikt multiplicerad med genomsnittlig mängd per stopp. Den påverkar 30 % av prioriteten och avgör samtidigt om en låg placering bör rekommenderas.</p><div class="ergonomic-totals"><div><strong><%= model.weight.lowPreferred.toLocaleString('sv-SE') %></strong><span>låg föredras</span></div><div><strong><%= model.weight.lowStronglyRecommended.toLocaleString('sv-SE') %></strong><span>låg starkt rekommenderad</span></div></div><% if (!model.weight.locationHeightAvailable) { %><p class="data-note"><strong>Databegränsning:</strong> Lagerfilen innehåller inte hyllornas ergonomiska höjdnivå. Motorn kan därför rekommendera låg placering, men ännu inte jämföra rekommendationen med faktisk hyllhöjd.</p><% } %></div>
+        <div class="analysis-card card"><div class="chart-heading"><div><h3>Hanterad vikt per plock</h3><p><%= model.weight.evaluatedArticles.toLocaleString('sv-SE') %> utvärderade artiklar</p></div><span>kg/stopp</span></div><div class="horizontal-bars"><% model.weight.bins.forEach((bin) => { %><div class="horizontal-row"><span><%= bin.label %></span><div><i style="width:<%= Math.max(1, bin.count / maxWeightBin * 100) %>%"></i></div><strong><%= bin.count.toLocaleString('sv-SE') %></strong></div><% }) %></div></div>
+      </section>
+
+      <section class="simulation-analysis card">
+        <div class="simulation-analysis-header"><div><span class="section-number">04</span><h2>Simuleringsanalys</h2><p>Samma kompletta historiska plockdokument körs genom nuvarande och projicerad layout.</p></div><div class="coverage-chip"><strong><%= (model.simulation.coverage * 100).toFixed(1) %> %</strong><span>snapshot coverage</span></div></div>
+        <div class="simulation-labels"><span>Nuvarande</span><i></i><span>Optimerat</span></div>
+        <div class="simulation-comparison-grid">
+          <div class="simulation-row"><span>Flerplocksspann<small>Lägre är bättre</small></span><strong><%= (model.simulation.baseline.averageMultiPickSpan * 100).toFixed(1) %> %</strong><i>→</i><strong class="optimized"><%= (model.simulation.optimized.averageMultiPickSpan * 100).toFixed(1) %> %</strong><b>−<%= (model.simulation.comparison.multiPickSpan.relativeImprovement * 100).toFixed(1) %> %</b></div>
+          <div class="simulation-row"><span>Viktordning<small>Högre är bättre</small></span><strong><%= (model.simulation.baseline.weightOrderScore * 100).toFixed(1) %> %</strong><i>→</i><strong class="optimized"><%= (model.simulation.optimized.weightOrderScore * 100).toFixed(1) %> %</strong><b>+<%= (model.simulation.comparison.weightOrder.percentagePointImprovement * 100).toFixed(1) %> p.e.</b></div>
+          <div class="simulation-row"><span>Rätt viktpar<small>Tyngre före lättare</small></span><strong><%= model.simulation.baseline.correctlyOrderedPairs.toLocaleString('sv-SE') %></strong><i>→</i><strong class="optimized"><%= model.simulation.optimized.correctlyOrderedPairs.toLocaleString('sv-SE') %></strong><b>+<%= model.simulation.improvedWeightPairs.toLocaleString('sv-SE') %></b></div>
+        </div>
+        <div class="method-box"><h3>Så görs jämförelsen</h3><div><span>1</span><p>Endast historiska dokument som kan återskapas komplett mot placeringssnapshoten används.</p></div><div><span>2</span><p>Exakt samma order, artiklar, kvantiteter och vikter används före och efter.</p></div><div><span>3</span><p>Artiklar med ett absolut placement gap på minst 20 % flyttas till sin beräknade relativa målposition.</p></div><div><span>4</span><p>Plockspann och viktordning räknas om; skillnaden är den simulerade effekten av förslaget.</p></div></div>
+      </section>
+    </main>
+  </div>
+  <script id="scatterData" type="application/json"><%- JSON.stringify(model.scatter.points).replace(/</g, "\\u003c") %></script>
+  <script src="/js/analysis.js"></script>
+</body>
+</html>

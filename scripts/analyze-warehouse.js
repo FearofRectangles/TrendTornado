@@ -435,6 +435,12 @@ console.log(
     simulation.baseline.averageMultiPickSpan,
   )}`,
 );
+
+
+// --------------------------------------------------
+// Simulation coverage diagnostics
+// --------------------------------------------------
+
 console.log("");
 
 console.log(
@@ -446,44 +452,81 @@ console.log(
 );
 
 console.log(
-  `Included records:     ${simulation.diagnostics.includedRecords}`,
-);
-
-console.log(
-  `Excluded records:     ${simulation.diagnostics.excludedRecords}`,
+  `Historical records:    ${simulation.diagnostics.totalRecords}`,
 );
 
 console.log("");
 
 console.log(
-  `Missing article:      ${simulation.diagnostics.missingArticle}`,
+  `Individually valid:    ${simulation.diagnostics.validRecords}`,
 );
 
 console.log(
-  `Invalid weight:       ${simulation.diagnostics.invalidWeight}`,
+  `Excluded records:      ${simulation.diagnostics.excludedRecords}`,
 );
 
 console.log(
-  `No PICK location:     ${simulation.diagnostics.noPickLocation}`,
+  `Complete-UT records:   ${simulation.diagnostics.includedRecords}`,
 );
 
 console.log(
-  `Multiple PICK loc.:   ${simulation.diagnostics.multiplePickLocations}`,
-);
-
-console.log(
-  `No sequence position: ${simulation.diagnostics.noSequencePosition}`,
-);
-
-console.log(
-  `Missing pick zone:    ${simulation.diagnostics.missingPickZone}`,
+  `Lost with partial UT:  ${simulation.diagnostics.recordsExcludedByDocumentFilter}`,
 );
 
 console.log("");
 
 console.log(
-  `Simulation groups:    ${simulation.diagnostics.simulatedGroups}`,
+  `Historical UT:         ${simulation.diagnostics.totalDocuments}`,
 );
+
+console.log(
+  `Fully covered UT:      ${simulation.diagnostics.fullyCoveredDocuments}`,
+);
+
+console.log(
+  `Partially covered UT:  ${simulation.diagnostics.partiallyCoveredDocuments}`,
+);
+
+console.log(
+  `Zero-covered UT:       ${simulation.diagnostics.uncoveredDocuments}`,
+);
+
+console.log("");
+
+console.log(
+  `Missing article:       ${simulation.diagnostics.missingArticle}`,
+);
+
+console.log(
+  `Invalid weight:        ${simulation.diagnostics.invalidWeight}`,
+);
+
+console.log(
+  `No PICK location:      ${simulation.diagnostics.noPickLocation}`,
+);
+
+console.log(
+  `Multiple PICK loc.:    ${simulation.diagnostics.multiplePickLocations}`,
+);
+
+console.log(
+  `No sequence position:  ${simulation.diagnostics.noSequencePosition}`,
+);
+
+console.log(
+  `Missing pick zone:     ${simulation.diagnostics.missingPickZone}`,
+);
+
+console.log("");
+
+console.log(
+  `Simulation groups:     ${simulation.diagnostics.simulatedGroups}`,
+);
+
+
+// --------------------------------------------------
+// Current layout baseline
+// --------------------------------------------------
 
 console.log("");
 
@@ -496,8 +539,14 @@ console.log(
 );
 
 console.log(
-  `Average pick span:    ${formatPercentage(
+  `Average pick span:     ${formatPercentage(
     simulation.baseline.averagePickSpan,
+  )}`,
+);
+
+console.log(
+  `Multi-pick avg span:   ${formatPercentage(
+    simulation.baseline.averageMultiPickSpan,
   )}`,
 );
 
@@ -513,17 +562,205 @@ console.log(
 );
 
 console.log(
-  `Correct pairs:        ${simulation.baseline.correctlyOrderedPairs}`,
+  `Correct pairs:         ${simulation.baseline.correctlyOrderedPairs}`,
 );
 
 console.log(
-  `Comparable pairs:     ${simulation.baseline.comparablePairs}`,
+  `Comparable pairs:      ${simulation.baseline.comparablePairs}`,
 );
 
 console.log(
-  `Score:                ${formatPercentage(
+  `Score:                 ${formatPercentage(
     simulation.baseline.weightOrderScore,
   )}`,
+);
+
+
+// --------------------------------------------------
+// Optimized layout simulation
+// --------------------------------------------------
+
+console.log("");
+
+console.log(
+  "Optimized layout simulation",
+);
+
+console.log(
+  "---------------------------",
+);
+
+console.log(
+  `Simulation groups:     ${simulation.optimized.simulatedOrders}`,
+);
+
+console.log(
+  `Simulated picks:       ${simulation.optimized.totalPicks}`,
+);
+
+console.log(
+  `Average pick span:     ${formatPercentage(
+    simulation.optimized.averagePickSpan,
+  )}`,
+);
+
+console.log(
+  `Multi-pick avg span:   ${formatPercentage(
+    simulation.optimized.averageMultiPickSpan,
+  )}`,
+);
+
+console.log(
+  `Weight ordering:       ${formatPercentage(
+    simulation.optimized.weightOrderScore,
+  )}`,
+);
+
+console.log(
+  `Correct pairs:         ${simulation.optimized.correctlyOrderedPairs}`,
+);
+
+console.log(
+  `Comparable pairs:      ${simulation.optimized.comparablePairs}`,
+);
+
+
+// --------------------------------------------------
+// Simulated improvement
+// --------------------------------------------------
+
+console.log("");
+
+console.log(
+  "Simulated improvement",
+);
+
+console.log(
+  "---------------------",
+);
+
+console.log(
+  `Movement threshold:    ${formatPercentage(
+    simulation.movementThreshold,
+  )}`,
+);
+
+console.log("");
+
+console.log(
+  "Multi-pick span",
+);
+
+console.log(
+  `  Before:              ${formatPercentage(
+    simulation
+      .comparison
+      .multiPickSpan
+      .before,
+  )}`,
+);
+
+console.log(
+  `  After:               ${formatPercentage(
+    simulation
+      .comparison
+      .multiPickSpan
+      .after,
+  )}`,
+);
+
+console.log(
+  `  Improvement:         ${formatSignedImprovement(
+    simulation
+      .comparison
+      .multiPickSpan
+      .relativeImprovement,
+  )}`,
+);
+
+console.log("");
+
+console.log(
+  "Weight ordering",
+);
+
+console.log(
+  `  Before:              ${formatPercentage(
+    simulation
+      .comparison
+      .weightOrder
+      .before,
+  )}`,
+);
+
+console.log(
+  `  After:               ${formatPercentage(
+    simulation
+      .comparison
+      .weightOrder
+      .after,
+  )}`,
+);
+
+console.log(
+  `  Improvement:         ${formatPercentagePoints(
+    simulation
+      .comparison
+      .weightOrder
+      .percentagePointImprovement,
+  )}`,
+);
+
+
+// --------------------------------------------------
+// Simulation population sanity check
+// --------------------------------------------------
+
+console.log("");
+
+console.log(
+  "Simulation population check",
+);
+
+console.log(
+  "---------------------------",
+);
+
+console.log(
+  `Baseline groups:       ${simulation.baseline.simulatedOrders}`,
+);
+
+console.log(
+  `Optimized groups:      ${simulation.optimized.simulatedOrders}`,
+);
+
+console.log(
+  `Baseline picks:        ${simulation.baseline.totalPicks}`,
+);
+
+console.log(
+  `Optimized picks:       ${simulation.optimized.totalPicks}`,
+);
+
+const sameGroups =
+  simulation.baseline
+    .simulatedOrders ===
+  simulation.optimized
+    .simulatedOrders;
+
+const samePicks =
+  simulation.baseline
+    .totalPicks ===
+  simulation.optimized
+    .totalPicks;
+
+console.log(
+  `Same population:       ${
+    sameGroups &&
+    samePicks
+      ? "YES"
+      : "NO"
+  }`,
 );
 
 
@@ -1066,7 +1303,9 @@ for (
     ergonomicRecommendation,
   } = recommendation;
 
-  if (!recommendedArea) {
+  if (
+    !recommendedArea
+  ) {
     continue;
   }
 
@@ -1120,7 +1359,9 @@ for (
 // Helpers
 // --------------------------------------------------
 
-function formatDate(date) {
+function formatDate(
+  date,
+) {
   const year =
     date.getFullYear();
 
@@ -1146,7 +1387,9 @@ function formatDate(date) {
 }
 
 
-function formatNumber(value) {
+function formatNumber(
+  value,
+) {
   return new Intl.NumberFormat(
     "sv-SE",
     {
@@ -1162,7 +1405,10 @@ function formatNumber(value) {
 function formatPercentage(
   value,
 ) {
-  if (value === null) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
     return "unknown";
   }
 
@@ -1175,7 +1421,10 @@ function formatPercentage(
 function formatSignedPercentage(
   value,
 ) {
-  if (value === null) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
     return "unknown";
   }
 
@@ -1190,6 +1439,56 @@ function formatSignedPercentage(
   return (
     `${sign}` +
     `${percentage.toFixed(1)} %`
+  );
+}
+
+
+function formatSignedImprovement(
+  value,
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "unknown";
+  }
+
+  const percentage =
+    value * 100;
+
+  const sign =
+    percentage > 0
+      ? "+"
+      : "";
+
+  return (
+    `${sign}` +
+    `${percentage.toFixed(1)} %`
+  );
+}
+
+
+function formatPercentagePoints(
+  value,
+) {
+  if (
+    value === null ||
+    value === undefined
+  ) {
+    return "unknown";
+  }
+
+  const percentagePoints =
+    value * 100;
+
+  const sign =
+    percentagePoints > 0
+      ? "+"
+      : "";
+
+  return (
+    `${sign}` +
+    `${percentagePoints.toFixed(1)} p.e.`
   );
 }
 
