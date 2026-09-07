@@ -26,10 +26,8 @@ export class WarehouseDataLoader {
     locationPath,
     placementPath,
   }) {
-    this.#assertPath(
-      historyPath,
-      "History",
-    );
+    const historyPaths =
+      this.#normalizeHistoryPaths(historyPath);
 
     this.#assertPath(
       articlePath,
@@ -51,9 +49,12 @@ export class WarehouseDataLoader {
     // Read CSV files
     // --------------------------------------------------
 
-    const historyRows =
-      await readCsvFile(
-        historyPath,
+    const historySourceRows =
+      await Promise.all(
+        historyPaths.map(async (sourcePath) => ({
+          path: sourcePath,
+          rows: await readCsvFile(sourcePath),
+        })),
       );
 
     const articleRows =
@@ -79,15 +80,22 @@ export class WarehouseDataLoader {
     // History
     // --------------------------------------------------
 
+    const mappedHistorySources =
+      historySourceRows.map((source) => ({
+        ...source,
+        records: source.rows
+          .map(mapPickHistoryCsvRow)
+          .filter((record) => record !== null),
+      }));
+
+    const historyMerge =
+      mergeHistoryRecordSources(mappedHistorySources);
+
     const historyRecords =
-      historyRows
-        .map(
-          mapPickHistoryCsvRow,
-        )
-        .filter(
-          (record) =>
-            record !== null,
-        );
+      historyMerge.records;
+
+    const historyRows =
+      historySourceRows.flatMap((source) => source.rows);
 
 
     // --------------------------------------------------
@@ -169,6 +177,18 @@ export class WarehouseDataLoader {
         validHistoryRecords:
           historyRecords.length,
 
+        historyFiles:
+          historyPaths.length,
+
+        duplicateHistoryDocuments:
+          historyMerge.duplicateDocuments,
+
+        duplicateHistoryRecords:
+          historyMerge.duplicateRecords,
+
+        historySources:
+          historyMerge.sources,
+
         articleRows:
           articleRows.length,
 
@@ -210,4 +230,69 @@ export class WarehouseDataLoader {
       );
     }
   }
+
+  static #normalizeHistoryPaths(historyPath) {
+    const paths = Array.isArray(historyPath)
+      ? historyPath
+      : [historyPath];
+
+    if (paths.length === 0) {
+      throw new TypeError("At least one history file path is required.");
+    }
+
+    for (const sourcePath of paths) {
+      this.#assertPath(sourcePath, "History");
+    }
+
+    return paths;
+  }
+}
+
+export function mergeHistoryRecordSources(sources) {
+  if (!Array.isArray(sources)) {
+    throw new TypeError("History sources must be an array.");
+  }
+
+  const seenDocuments = new Set();
+  const records = [];
+  const sourceSummaries = [];
+  let duplicateDocuments = 0;
+  let duplicateRecords = 0;
+
+  for (const source of sources) {
+    if (!Array.isArray(source.records)) {
+      throw new TypeError("Every history source must contain records.");
+    }
+
+    const documents = new Set(
+      source.records.map((record) => String(record.documentNumber)),
+    );
+    const overlappingDocuments = new Set(
+      [...documents].filter((documentNumber) => seenDocuments.has(documentNumber)),
+    );
+    const acceptedRecords = source.records.filter((record) => (
+      !overlappingDocuments.has(String(record.documentNumber))
+    ));
+    const excludedRecords = source.records.length - acceptedRecords.length;
+
+    records.push(...acceptedRecords);
+    documents.forEach((documentNumber) => seenDocuments.add(documentNumber));
+    duplicateDocuments += overlappingDocuments.size;
+    duplicateRecords += excludedRecords;
+    sourceSummaries.push({
+      path: source.path,
+      rows: source.rows?.length ?? source.records.length,
+      validRecords: source.records.length,
+      includedRecords: acceptedRecords.length,
+      duplicateDocuments: overlappingDocuments.size,
+      duplicateRecords: excludedRecords,
+    });
+  }
+
+  return {
+    records,
+    sources: sourceSummaries,
+    duplicateDocuments,
+    duplicateRecords,
+  };
 }

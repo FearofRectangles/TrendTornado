@@ -16,17 +16,25 @@ async function loadPageData(settings) {
     locationPath: DataFiles.locations,
     placementPath: DataFiles.placements,
   });
+  const historySources = data.importSummary.historySources.map((source, index) => [
+    `Artikelhistorik ${index + 1}`,
+    source.path,
+    source.includedRecords,
+    "inkluderade plockrader",
+    source,
+  ]);
   const sources = await Promise.all([
-    ["Artikelhistorik", DataFiles.history, data.importSummary.validHistoryRecords, "plockrader"],
+    ...historySources,
     ["Artikeldata", DataFiles.articles, data.importSummary.articleRows, "artiklar"],
     ["Lagerstruktur", DataFiles.locations, data.importSummary.validLocationRows, "platser"],
     ["Artikelplacering", DataFiles.placements, data.importSummary.validPlacementRecords, "placeringar"],
-  ].map(async ([label, filePath, count, unit]) => ({
+  ].map(async ([label, filePath, count, unit, historyDiagnostics = null]) => ({
     label,
     fileName: path.basename(filePath),
     count,
     unit,
     modifiedAt: (await stat(filePath)).mtime,
+    historyDiagnostics,
   })));
 
   return {

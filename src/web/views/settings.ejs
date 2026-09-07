@@ -51,7 +51,7 @@
 
       <section class="settings-section card readonly-section data-sources-section">
         <div class="settings-section-intro"><span>05</span><h2>Datakällor</h2><p>Filerna som den aktuella analysen läser från.</p></div>
-        <div class="data-source-list"><% sources.forEach((source) => { %><article><i>✓</i><div><strong><%= source.label %></strong><span><%= source.fileName %></span></div><b><%= source.count.toLocaleString('sv-SE') %> <%= source.unit %></b><time datetime="<%= source.modifiedAt.toISOString() %>">Ändrad <%= source.modifiedAt.toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) %></time></article><% }) %></div>
+        <div class="data-source-list"><% sources.forEach((source) => { %><article><i>✓</i><div><strong><%= source.label %></strong><span><%= source.fileName %></span><% if (source.historyDiagnostics?.duplicateDocuments) { %><em><%= source.historyDiagnostics.duplicateDocuments.toLocaleString('sv-SE') %> överlappande dokument · <%= source.historyDiagnostics.duplicateRecords.toLocaleString('sv-SE') %> rader ignorerade</em><% } %></div><b><%= source.count.toLocaleString('sv-SE') %> <%= source.unit %></b><time datetime="<%= source.modifiedAt.toISOString() %>">Ändrad <%= source.modifiedAt.toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) %></time></article><% }) %></div>
       </section>
     </main>
   </div>
