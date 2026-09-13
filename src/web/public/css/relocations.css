@@ -95,3 +95,4 @@
 
 @media (max-width: 1150px) { .filter-grid { grid-template-columns: repeat(3, 1fr); } .relocation-summary { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 720px) { .relocation-summary, .filter-grid { grid-template-columns: 1fr; } .search-filter { grid-column: auto; } .date-range { display: none; } }
+.work-table .class-a { background:#dff1e4; color:#17653b; }.work-table .class-b { background:#fff0d8; color:#965c0a; }.work-table .class-c { background:#eeeaf7; color:#664c9b; }

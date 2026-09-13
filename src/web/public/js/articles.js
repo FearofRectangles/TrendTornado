@@ -3,6 +3,7 @@ const search = document.getElementById("articleSearch");
 const pickZone = document.getElementById("articlePickZoneFilter");
 const temperature = document.getElementById("articleTemperatureFilter");
 const dataFilter = document.getElementById("articleDataFilter");
+const classification = document.getElementById("articleClassificationFilter");
 const resultSummary = document.getElementById("articleResultSummary");
 const pageSummary = document.getElementById("articlePageSummary");
 const pageIndicator = document.getElementById("articlePageIndicator");
@@ -11,6 +12,11 @@ const next = document.getElementById("articleNextPage");
 const formatter = new Intl.NumberFormat("sv-SE");
 const pageSize = 30;
 let currentPage = 1;
+
+const requestedClassification = new URLSearchParams(window.location.search).get("classification");
+if (requestedClassification && [...classification.options].some((option) => option.value === requestedClassification)) {
+  classification.value = requestedClassification;
+}
 
 function matchesDataFilter(row) {
   if (dataFilter.value === "ANALYZED") return row.dataset.analyzed === "true";
@@ -25,6 +31,7 @@ function filteredRows() {
     (term === "" || row.dataset.search.includes(term)) &&
     (pickZone.value === "" || row.dataset.pickZone === pickZone.value) &&
     (temperature.value === "" || row.dataset.temperature === temperature.value) &&
+    (classification.value === "" || row.dataset.classification === classification.value) &&
     matchesDataFilter(row)
   ));
 }
@@ -46,7 +53,7 @@ function render() {
 
 function reset() { currentPage = 1; render(); }
 search.addEventListener("input", reset);
-[pickZone, temperature, dataFilter].forEach((control) => control.addEventListener("change", reset));
+[pickZone, temperature, classification, dataFilter].forEach((control) => control.addEventListener("change", reset));
 previous.addEventListener("click", () => { if (currentPage > 1) { currentPage -= 1; render(); } });
 next.addEventListener("click", () => {
   const pages = Math.max(1, Math.ceil(filteredRows().length / pageSize));

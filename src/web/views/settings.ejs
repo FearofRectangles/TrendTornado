@@ -12,7 +12,7 @@
       <nav class="sidebar-nav">
         <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
         <div class="nav-group"><a class="nav-item" href="/relocations"><span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span></a><div class="nav-subitems"><a class="nav-subitem" href="/relocations">Alla flyttare</a><a class="nav-subitem" href="/relocations/earlier">Flytta tidigare</a><a class="nav-subitem" href="/relocations/later">Flytta senare</a></div></div>
-        <a class="nav-item" href="/analysis"><span class="nav-icon">◫</span>Analys</a><a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a><a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a><a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a><a class="nav-item active" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
+        <a class="nav-item" href="/analysis"><span class="nav-icon">◫</span>Analys</a><a class="nav-item" href="/affinity"><span class="nav-icon">⌁</span>Affinitet</a><a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a><a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a><a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a><a class="nav-item active" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
       </nav>
       <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= periodEnd?.toLocaleDateString('sv-SE') ?? 'Saknas' %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString('sv-SE') %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
     </aside>
@@ -32,12 +32,17 @@
         </section>
 
         <section class="settings-section card">
-          <div class="settings-section-intro"><span>02</span><h2>Ergonomi</h2><p>Gränserna gäller både artikelns styckvikt och den genomsnittliga hanterade vikten per plock.</p></div>
+          <div class="settings-section-intro"><span>02</span><h2>ABC/XYZ</h2><p>ABC-gränserna anger hur stor kumulativ andel av alla plockstopp som utgör hög respektive medelhög aktivitet.</p></div>
+          <div class="settings-fields"><label class="setting-field"><div><strong>A-klass till</strong><p>Artiklar som tillsammans står för den första delen av aktiviteten.</p></div><div class="number-input"><input name="abcAThreshold" type="number" min="1" max="98" step="1" required value="<%= settings.classification.abcAThreshold * 100 %>"><span>%</span></div></label><label class="setting-field"><div><strong>A + B till</strong><p>Resterande artiklar blir C-klass. Värdet måste vara högre än A-gränsen.</p></div><div class="number-input"><input name="abcBThreshold" type="number" min="2" max="99" step="1" required value="<%= settings.classification.abcBThreshold * 100 %>"><span>%</span></div></label><div class="coming-setting"><div><strong>XYZ-regler</strong><p>X och Y använder tills vidare de dokumenterade standardgränserna för aktiva veckor och variationskoefficient.</p></div><span>Standardmodell</span></div></div>
+        </section>
+
+        <section class="settings-section card">
+          <div class="settings-section-intro"><span>03</span><h2>Ergonomi</h2><p>Gränserna gäller både artikelns styckvikt och den genomsnittliga hanterade vikten per plock.</p></div>
           <div class="settings-fields"><label class="setting-field"><div><strong>Låg placering föredras från</strong><p>Artikeln markeras som ergonomiskt prioriterad.</p></div><div class="number-input"><input name="lowPreferredKg" type="number" min="0" step="0.1" required value="<%= settings.ergonomics.lowPreferredKg %>"><span>kg</span></div></label><label class="setting-field"><div><strong>Låg placering rekommenderas starkt från</strong><p>Måste vara lika med eller högre än gränsen ovan.</p></div><div class="number-input"><input name="lowStronglyRecommendedKg" type="number" min="0" step="0.1" required value="<%= settings.ergonomics.lowStronglyRecommendedKg %>"><span>kg</span></div></label></div>
         </section>
 
         <section class="settings-section card">
-          <div class="settings-section-intro"><span>03</span><h2>Avståndsmodell</h2><p>Standardmåttet används för att uppskatta gångavstånd mellan fack i samma plockflöde.</p></div>
+          <div class="settings-section-intro"><span>04</span><h2>Avståndsmodell</h2><p>Standardmåttet används för att uppskatta gångavstånd mellan fack i samma plockflöde.</p></div>
           <div class="settings-fields"><label class="setting-field featured-setting"><div><strong>Standardfackets bredd</strong><p>Avstånd från ett facks start till nästa facks start. Kan senare skrivas över per zon.</p></div><div class="number-input"><input name="standardBayWidthMeters" type="number" min="0.1" max="20" step="0.1" required value="<%= settings.distance.standardBayWidthMeters %>"><span>meter</span></div></label><div class="coming-setting"><div><strong>Zonövergångar</strong><p>Manuella avstånd mellan angränsande zoner läggs till när distansmotorn byggs.</p></div><span>Kommer härnäst</span></div></div>
         </section>
 
@@ -45,12 +50,12 @@
       </form>
 
       <section class="settings-section card readonly-section">
-        <div class="settings-section-intro"><span>04</span><h2>Lagerregler</h2><p>Dessa mappings kommer från domänmodellen och visar hur fysiska zonnummer tolkas.</p></div>
+        <div class="settings-section-intro"><span>05</span><h2>Lagerregler</h2><p>Dessa mappings kommer från domänmodellen och visar hur fysiska zonnummer tolkas.</p></div>
         <div class="settings-table-wrap"><table class="settings-table"><thead><tr><th>Fysisk zon</th><th>Temperatur</th><th>Plockzon</th></tr></thead><tbody><% zoneProfiles.forEach((profile) => { %><tr><td><%= String(profile.from).padStart(2, '0') %>–<%= String(profile.to).padStart(2, '0') %></td><td><span class="mapping-temperature"><%= profile.temperatureZone %></span></td><td><strong><%= profile.pickZoneType %></strong></td></tr><% }) %></tbody></table></div>
       </section>
 
       <section class="settings-section card readonly-section data-sources-section">
-        <div class="settings-section-intro"><span>05</span><h2>Datakällor</h2><p>Filerna som den aktuella analysen läser från.</p></div>
+        <div class="settings-section-intro"><span>06</span><h2>Datakällor</h2><p>Filerna som den aktuella analysen läser från.</p></div>
         <div class="data-source-list"><% sources.forEach((source) => { %><article><i>✓</i><div><strong><%= source.label %></strong><span><%= source.fileName %></span><% if (source.historyDiagnostics?.duplicateDocuments) { %><em><%= source.historyDiagnostics.duplicateDocuments.toLocaleString('sv-SE') %> överlappande dokument · <%= source.historyDiagnostics.duplicateRecords.toLocaleString('sv-SE') %> rader ignorerade</em><% } %></div><b><%= source.count.toLocaleString('sv-SE') %> <%= source.unit %></b><time datetime="<%= source.modifiedAt.toISOString() %>">Ändrad <%= source.modifiedAt.toLocaleString('sv-SE', { dateStyle: 'short', timeStyle: 'short' }) %></time></article><% }) %></div>
       </section>
     </main>

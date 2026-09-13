@@ -12,6 +12,7 @@ export class SettingsRepository {
         analysis: { ...DEFAULT_SETTINGS.analysis, ...stored.analysis },
         ergonomics: { ...DEFAULT_SETTINGS.ergonomics, ...stored.ergonomics },
         distance: { ...DEFAULT_SETTINGS.distance, ...stored.distance },
+        classification: { ...DEFAULT_SETTINGS.classification, ...stored.classification },
       });
     } catch (error) {
       if (error.code === "ENOENT") return validateSettings(DEFAULT_SETTINGS);

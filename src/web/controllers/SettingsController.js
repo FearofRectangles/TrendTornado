@@ -77,6 +77,10 @@ export class SettingsController {
       distance: {
         standardBayWidthMeters: decimal(req.body.standardBayWidthMeters),
       },
+      classification: {
+        abcAThreshold: decimal(req.body.abcAThreshold) / 100,
+        abcBThreshold: decimal(req.body.abcBThreshold) / 100,
+      },
     };
 
     try {

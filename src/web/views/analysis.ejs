@@ -17,6 +17,7 @@
         <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
         <div class="nav-group"><a class="nav-item" href="/relocations"><span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span></a><div class="nav-subitems"><a class="nav-subitem" href="/relocations">Alla flyttare</a><a class="nav-subitem" href="/relocations/earlier">Flytta tidigare</a><a class="nav-subitem" href="/relocations/later">Flytta senare</a></div></div>
         <a class="nav-item active" href="/analysis"><span class="nav-icon">◫</span>Analys</a>
+        <a class="nav-item" href="/affinity"><span class="nav-icon">⌁</span>Affinitet</a>
         <a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a>
         <a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a>
         <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
@@ -46,8 +47,17 @@
         <div class="analysis-card card"><div class="chart-heading"><div><h3>Hanterad vikt per plock</h3><p><%= model.weight.evaluatedArticles.toLocaleString('sv-SE') %> utvärderade artiklar</p></div><span>kg/stopp</span></div><div class="horizontal-bars"><% model.weight.bins.forEach((bin) => { %><div class="horizontal-row"><span><%= bin.label %></span><div><i style="width:<%= Math.max(1, bin.count / maxWeightBin * 100) %>%"></i></div><strong><%= bin.count.toLocaleString('sv-SE') %></strong></div><% }) %></div></div>
       </section>
 
+      <section class="classification-analysis card">
+        <div class="classification-heading"><div><span class="section-number">04</span><h2>ABC/XYZ-klassificering</h2><p>ABC visar hur stor del av plockaktiviteten artikeln står för. XYZ visar hur stabil efterfrågan är över de <%= model.classification.observedWeekCount %> observerade veckorna.</p></div><div class="quality-chip"><strong><%= model.classification.quality === 'STRONG' ? 'Starkt underlag' : model.classification.quality === 'RELIABLE' ? 'Tillförlitligt' : model.classification.quality === 'PRELIMINARY' ? 'Preliminärt' : 'Otillräckligt' %></strong><span><%= model.classification.observedWeekCount %> veckor analyserade</span></div></div>
+        <div class="classification-layout">
+          <div class="abc-summary"><h3>Aktivitetsklasser</h3><% model.classification.abc.forEach((item) => { %><div class="abc-row"><span class="matrix-badge class-<%= item.class.toLowerCase() %>"><%= item.class %></span><div><i style="width:<%= item.activityShare * 100 %>%"></i></div><strong><%= item.count.toLocaleString('sv-SE') %></strong><small><%= (item.activityShare * 100).toFixed(1) %> % av stopp</small></div><% }) %><div class="classification-signals"><div><strong><%= model.classification.axFarBack.toLocaleString('sv-SE') %></strong><span>AX-artiklar i bakre halvan</span></div><div><strong><%= model.classification.czEarly.toLocaleString('sv-SE') %></strong><span>CZ-artiklar i första fjärdedelen</span></div></div></div>
+          <div class="xyz-matrix"><div class="matrix-axis"><span>Stabil X</span><span>Varierande Y</span><span>Sporadisk Z</span></div><div class="matrix-grid"><% model.classification.matrix.forEach((cell) => { %><a href="/articles?classification=<%= cell.key %>" class="matrix-cell class-<%= cell.abcClass.toLowerCase() %>"><strong><%= cell.key %></strong><b><%= cell.count.toLocaleString('sv-SE') %></b><span>artiklar</span><small><%= (cell.activityShare * 100).toFixed(1) %> % av stopp</small></a><% }) %></div><div class="matrix-caption"><span>A · hög aktivitet</span><span>B · medel</span><span>C · låg</span></div></div>
+        </div>
+        <div class="classification-method">X: aktiv minst 80 % av veckorna och CV ≤ 0,50 · Y: aktiv minst 50 % och CV ≤ 1,00 · Z: övriga. Veckor utan plock räknas som noll inom det observerade underlaget.</div>
+      </section>
+
       <section class="simulation-analysis card">
-        <div class="simulation-analysis-header"><div><span class="section-number">04</span><h2>Simuleringsanalys</h2><p>Samma kompletta historiska plockdokument körs genom nuvarande och projicerad layout.</p></div><div class="coverage-chip"><strong><%= (model.simulation.coverage * 100).toFixed(1) %> %</strong><span>snapshot coverage</span></div></div>
+        <div class="simulation-analysis-header"><div><span class="section-number">05</span><h2>Simuleringsanalys</h2><p>Samma kompletta historiska plockdokument körs genom nuvarande och projicerad layout.</p></div><div class="coverage-chip"><strong><%= (model.simulation.coverage * 100).toFixed(1) %> %</strong><span>snapshot coverage</span></div></div>
         <div class="simulation-labels"><span>Nuvarande</span><i></i><span>Optimerat</span></div>
         <div class="simulation-comparison-grid">
           <div class="simulation-row"><span>Flerplocksspann<small>Lägre är bättre</small></span><strong><%= (model.simulation.baseline.averageMultiPickSpan * 100).toFixed(1) %> %</strong><i>→</i><strong class="optimized"><%= (model.simulation.optimized.averageMultiPickSpan * 100).toFixed(1) %> %</strong><b>−<%= (model.simulation.comparison.multiPickSpan.relativeImprovement * 100).toFixed(1) %> %</b></div>

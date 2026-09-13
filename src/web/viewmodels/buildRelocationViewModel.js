@@ -37,6 +37,7 @@ export function buildRelocationViewModel(analysis) {
         handlingScore: evaluation.handlingScore,
         priorityScore: evaluation.priorityScore,
         status: "NEW",
+        classification: analysis.articles?.classification?.byArticle.get(article.articleNumber) ?? null,
       };
     });
 

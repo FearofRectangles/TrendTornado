@@ -31,6 +31,7 @@
           </div>
         </div>
         <a class="nav-item" href="/analysis"><span class="nav-icon">◫</span>Analys</a>
+        <a class="nav-item" href="/affinity"><span class="nav-icon">⌁</span>Affinitet</a>
         <a class="nav-item" href="/warehouse"><span class="nav-icon">♙</span>Lagerstruktur</a>
         <a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a>
         <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
@@ -71,6 +72,7 @@
           <label>Plockzon<select id="pickZoneFilter"><option value="">Alla plockzoner</option><% filters.pickZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
           <label>Riktning<select id="relocationDirectionFilter"><option value="">Alla riktningar</option><option value="EARLIER">Flytta tidigare</option><option value="LATER">Flytta senare</option></select></label>
           <label>Ergonomi<select id="relocationErgonomicFilter"><option value="">All ergonomi</option><option value="LOW_PREFERRED">Låg föredras</option><option value="LOW_STRONGLY_RECOMMENDED">Låg rekommenderas</option></select></label>
+          <label>ABC/XYZ<select id="relocationClassificationFilter"><option value="">Alla klasser</option><% ['AX','AY','AZ','BX','BY','BZ','CX','CY','CZ'].forEach((value) => { %><option value="<%= value %>"><%= value %></option><% }) %></select></label>
           <label>Nuvarande zon<select id="currentZoneFilter"><option value="">Alla zoner</option><% filters.currentZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
           <label>Rekommenderad zon<select id="recommendedZoneFilter"><option value="">Alla zoner</option><% filters.recommendedZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
           <label>Minsta gap<div class="gap-filter"><input id="minimumGapFilter" type="range" min="20" max="100" value="20" step="5"><output id="minimumGapValue">20 %</output></div></label>
@@ -85,12 +87,13 @@
         </div>
         <div class="relocation-table-wrap">
           <table class="work-table">
-            <thead><tr><th>Artikel</th><th>Namn</th><th>Plockzon</th><th>Nu</th><th></th><th>Rekommenderat</th><th>Gap</th><th>Ergonomi</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Artikel</th><th>Namn</th><th>Klass</th><th>Plockzon</th><th>Nu</th><th></th><th>Rekommenderat</th><th>Gap</th><th>Ergonomi</th><th>Status</th><th></th></tr></thead>
             <tbody>
               <% recommendations.forEach((item) => { const earlier = item.direction === "EARLIER"; %>
-                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-pick-zone="<%= item.pickZone %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
+                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-pick-zone="<%= item.pickZone %>" data-classification="<%= item.classification?.classification ?? '' %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
                   <td><strong><%= item.articleNumber %></strong></td>
                   <td><div class="work-name"><%= item.name %></div></td>
+                  <td><% if (item.classification) { %><span class="badge class-<%= item.classification.abcClass.toLowerCase() %>"><%= item.classification.classification %></span><% } else { %>—<% } %></td>
                   <td><span class="badge zone-badge"><%= item.pickZone %></span></td>
                   <td><strong class="work-location"><%= item.currentZone %> <%= item.currentSection %></strong><small><%= (item.currentPosition * 100).toFixed(1) %> %</small></td>
                   <td class="work-direction <%= earlier ? 'earlier' : 'later' %>"><%= earlier ? '↑' : '↓' %></td>

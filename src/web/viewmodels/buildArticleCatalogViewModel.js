@@ -74,6 +74,7 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
         ergonomicRecommendation: recommendation?.ergonomicRecommendation?.recommendation ?? null,
         ergonomicReason: recommendation?.ergonomicRecommendation?.reason ?? null,
         hasSinglePickLocation: (analyzed?.positionedPickLocations?.length ?? fallbackLocations.length) === 1,
+        classification: analysis.articles.classification?.byArticle.get(masterArticle.articleNumber) ?? null,
       };
     })
     .toSorted((a, b) => (

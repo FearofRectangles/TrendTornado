@@ -11,6 +11,10 @@ export const DEFAULT_SETTINGS = Object.freeze({
   distance: Object.freeze({
     standardBayWidthMeters: 1,
   }),
+  classification: Object.freeze({
+    abcAThreshold: 0.80,
+    abcBThreshold: 0.95,
+  }),
 });
 
 export function validateSettings(settings) {
@@ -20,6 +24,8 @@ export function validateSettings(settings) {
   const lowPreferredKg = Number(settings?.ergonomics?.lowPreferredKg);
   const lowStronglyRecommendedKg = Number(settings?.ergonomics?.lowStronglyRecommendedKg);
   const standardBayWidthMeters = Number(settings?.distance?.standardBayWidthMeters);
+  const abcAThreshold = Number(settings?.classification?.abcAThreshold);
+  const abcBThreshold = Number(settings?.classification?.abcBThreshold);
 
   if (!Number.isFinite(movementThreshold) || movementThreshold < 0 || movementThreshold > 1) {
     throw new Error("Flyttgränsen måste vara mellan 0 och 100 %.");
@@ -33,10 +39,14 @@ export function validateSettings(settings) {
   if (!Number.isFinite(standardBayWidthMeters) || standardBayWidthMeters <= 0 || standardBayWidthMeters > 20) {
     throw new Error("Standardfackets bredd måste vara större än 0 och högst 20 meter.");
   }
+  if (!Number.isFinite(abcAThreshold) || !Number.isFinite(abcBThreshold) || abcAThreshold <= 0 || abcAThreshold >= abcBThreshold || abcBThreshold >= 1) {
+    throw new Error("ABC-gränserna måste vara stigande och ligga mellan 0 och 100 %.");
+  }
 
   return {
     analysis: { movementThreshold, frequencyWeight, handlingWeight },
     ergonomics: { lowPreferredKg, lowStronglyRecommendedKg },
     distance: { standardBayWidthMeters },
+    classification: { abcAThreshold, abcBThreshold },
   };
 }

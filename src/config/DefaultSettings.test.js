@@ -7,6 +7,7 @@ test("accepts and normalizes the default model settings", () => {
     analysis: { movementThreshold: 0.2, frequencyWeight: 0.7, handlingWeight: 0.3 },
     ergonomics: { lowPreferredKg: 4, lowStronglyRecommendedKg: 8 },
     distance: { standardBayWidthMeters: 1 },
+    classification: { abcAThreshold: 0.8, abcBThreshold: 0.95 },
   });
 });
 

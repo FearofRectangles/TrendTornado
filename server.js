@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const app = express();
 
-const PORT = 3000;
+const PORT = Number(process.env.TRENDTORNADO_PORT ?? process.env.PORT ?? 3000);
 
 
 // --------------------------------------------------

@@ -33,6 +33,7 @@ import {
   DEFAULT_SETTINGS,
   validateSettings,
 } from "../../config/DefaultSettings.js";
+import { AbcXyzClassificationEngine } from "../../domain/analytics/classification/AbcXyzClassificationEngine.js";
 
 import {
   enrichArticleStatistics,
@@ -153,21 +154,27 @@ export class WarehouseAnalysisService {
     // Analysis period
     // --------------------------------------------------
 
-    const timestamps =
-      historyRecords.map(
-        (record) =>
-          record.postingDate.getTime(),
-      );
+    let minTimestamp = Infinity;
+let maxTimestamp = -Infinity;
 
-    const periodStart =
-      new Date(
-        Math.min(...timestamps),
-      );
+for (const record of historyRecords) {
+  const timestamp =
+    record.postingDate.getTime();
 
-    const periodEnd =
-      new Date(
-        Math.max(...timestamps),
-      );
+  if (timestamp < minTimestamp) {
+    minTimestamp = timestamp;
+  }
+
+  if (timestamp > maxTimestamp) {
+    maxTimestamp = timestamp;
+  }
+}
+
+const periodStart =
+  new Date(minTimestamp);
+
+const periodEnd =
+  new Date(maxTimestamp);
 
     periodStart.setHours(
       0,
@@ -213,6 +220,15 @@ export class WarehouseAnalysisService {
       attachPickSequence(
         analyzedArticles,
         pickSequence,
+      );
+
+    const classification =
+      AbcXyzClassificationEngine.analyze(
+        historyRecords,
+        {
+          aThreshold: activeSettings.classification.abcAThreshold,
+          bThreshold: activeSettings.classification.abcBThreshold,
+        },
       );
 
 
@@ -625,6 +641,8 @@ export class WarehouseAnalysisService {
 
         withPosition:
           articlesWithPosition,
+
+        classification,
       },
 
       evaluations: {

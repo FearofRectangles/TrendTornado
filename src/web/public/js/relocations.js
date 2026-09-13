@@ -3,6 +3,7 @@ const controls = {
   pickZone: document.getElementById("pickZoneFilter"),
   direction: document.getElementById("relocationDirectionFilter"),
   ergonomic: document.getElementById("relocationErgonomicFilter"),
+  classification: document.getElementById("relocationClassificationFilter"),
   currentZone: document.getElementById("currentZoneFilter"),
   recommendedZone: document.getElementById("recommendedZoneFilter"),
   minimumGap: document.getElementById("minimumGapFilter"),
@@ -63,6 +64,7 @@ function filteredRows() {
     (controls.pickZone.value === "" || row.dataset.pickZone === controls.pickZone.value) &&
     (controls.direction.value === "" || row.dataset.direction === controls.direction.value) &&
     (controls.ergonomic.value === "" || row.dataset.ergonomic === controls.ergonomic.value) &&
+    (controls.classification.value === "" || row.dataset.classification === controls.classification.value) &&
     (controls.currentZone.value === "" || row.dataset.currentZone === controls.currentZone.value) &&
     (controls.recommendedZone.value === "" || row.dataset.recommendedZone === controls.recommendedZone.value) &&
     Number(row.dataset.gap) >= Number(controls.minimumGap.value) &&
@@ -117,6 +119,7 @@ function openDrawer(articleNumber, sourceRow) {
     <div class="drawer-metrics">
       <div><span>Gap</span><strong>${earlier ? "+" : "−"}${number.format(Math.abs(item.placementGap * 100))} %</strong></div>
       <div><span>Plockfrekvens</span><strong>${number.format(item.pickFrequency)}</strong></div>
+      <div><span>ABC/XYZ</span><strong>${escapeHtml(item.classification?.classification ?? "—")}</strong></div>
       <div><span>Snitt/plock</span><strong>${number.format(item.averageQuantityPerPick)}</strong></div>
       <div><span>Hanterad vikt</span><strong>${number.format(item.averageHandledWeightPerPick)} kg</strong></div>
     </div>

@@ -4,7 +4,7 @@
 .article-total { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .article-total strong { color: var(--green-dark); font-size: 27px; }
 .article-total span { color: var(--text-muted); font-size: 10px; }
-.article-search-card { display: grid; grid-template-columns: minmax(280px, 1.7fr) repeat(3, minmax(150px, .7fr)); gap: 10px; margin-bottom: 16px; padding: 16px; }
+.article-search-card { display: grid; grid-template-columns: minmax(250px, 1.5fr) repeat(4, minmax(130px, .7fr)); gap: 10px; margin-bottom: 16px; padding: 16px; }
 .article-search { position: relative; }
 .article-search span { position: absolute; left: 13px; top: 8px; color: var(--text-muted); font-size: 18px; }
 .article-search-card input, .article-search-card select { width: 100%; height: 39px; border: 1px solid var(--border); border-radius: 8px; outline: 0; background: #fff; font-size: 11px; }
@@ -38,6 +38,9 @@
 .article-pagination button { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid var(--border); border-radius: 7px; background: #fff; cursor: pointer; font-size: 17px; }
 .article-pagination button:disabled { opacity: .35; cursor: default; }
 #articlePageIndicator { min-width: 45px; text-align: center; }
+.classification-badge { display: inline-grid; place-items: center; min-width: 34px; padding: 6px 7px; border-radius: 7px; background: #edf1ee; color: #526057; font-size: 10px; font-weight: 900; letter-spacing: .5px; }
+.classification-badge.class-a { background: #dff1e4; color: #17653b; }.classification-badge.class-b { background: #fff0d8; color: #965c0a; }.classification-badge.class-c { background: #eeeaf7; color: #664c9b; }
+.classification-hero { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; padding: 16px; border-radius: 11px; background: var(--surface-soft); }.classification-hero .classification-badge { min-width: 56px; min-height: 48px; font-size: 20px; }.classification-hero div { display: flex; flex-direction: column; gap: 4px; }.classification-hero b { font-size: 12px; }.classification-hero span { color: var(--text-muted); font-size: 9px; }
 
 .back-link { display: inline-flex; margin-bottom: 24px; color: var(--green-dark); font-size: 11px; font-weight: 700; }
 .article-identity { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 25px; padding-bottom: 22px; border-bottom: 1px solid var(--border); }

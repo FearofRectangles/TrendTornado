@@ -49,6 +49,29 @@ export function buildAnalysisViewModel(analysis) {
   });
   const baseline = analysis.simulation.baseline;
   const optimized = analysis.simulation.optimized;
+  const classificationResult = analysis.articles.classification;
+  const classified = [...(classificationResult?.byArticle?.values() ?? [])];
+  const matrix = ["A", "B", "C"].flatMap((abcClass) => (
+    ["X", "Y", "Z"].map((xyzClass) => {
+      const members = classified.filter((item) => item.abcClass === abcClass && item.xyzClass === xyzClass);
+      return {
+        key: `${abcClass}${xyzClass}`,
+        abcClass,
+        xyzClass,
+        count: members.length,
+        activityShare: members.reduce((sum, item) => sum + item.abc.activityShare, 0),
+      };
+    })
+  ));
+  const evaluationByArticle = new Map(evaluations.map((item) => [item.articleNumber, item]));
+  const axFarBack = classified.filter((item) => (
+    item.classification === "AX" &&
+    (evaluationByArticle.get(item.articleNumber)?.currentPosition ?? 0) >= 0.5
+  )).length;
+  const czEarly = classified.filter((item) => (
+    item.classification === "CZ" &&
+    (evaluationByArticle.get(item.articleNumber)?.currentPosition ?? 1) <= 0.25
+  )).length;
 
   return {
     frequency: {
@@ -81,6 +104,23 @@ export function buildAnalysisViewModel(analysis) {
       diagnostics: analysis.simulation.diagnostics,
       coverage: analysis.simulation.coverage,
       improvedWeightPairs: optimized.correctlyOrderedPairs - baseline.correctlyOrderedPairs,
+    },
+    classification: {
+      observedWeeks: classificationResult?.observedWeeks ?? [],
+      observedWeekCount: classificationResult?.observedWeekCount ?? 0,
+      quality: classificationResult?.quality ?? "INSUFFICIENT",
+      classifiedArticles: classified.length,
+      abc: ["A", "B", "C"].map((abcClass) => {
+        const members = classified.filter((item) => item.abcClass === abcClass);
+        return {
+          class: abcClass,
+          count: members.length,
+          activityShare: members.reduce((sum, item) => sum + item.abc.activityShare, 0),
+        };
+      }),
+      matrix,
+      axFarBack,
+      czEarly,
     },
   };
 }
