@@ -21,6 +21,7 @@ test("includes master articles without history and enriches analyzed articles", 
     },
     placements: { pickPlacements: [] },
     articles: {
+      classification: { observedWeekCount: 5, byArticle: new Map() },
       positioned: [{
         ...masterArticles[0],
         pickFrequency: 10,
@@ -35,6 +36,7 @@ test("includes master articles without history and enriches analyzed articles", 
   assert.equal(result.length, 2);
   assert.equal(result[0].articleNumber, "A");
   assert.equal(result[0].pickFrequency, 10);
+  assert.equal(result[0].pickedQuantityPerWeek, 5);
   assert.equal(result[0].isRelocationCandidate, true);
   assert.equal(result[1].articleNumber, "B");
   assert.equal(result[1].pickFrequency, 0);

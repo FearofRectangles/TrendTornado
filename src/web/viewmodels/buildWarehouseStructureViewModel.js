@@ -51,6 +51,12 @@ export function buildWarehouseStructureViewModel(analysis) {
       locationCode: location.locationCode,
       shelf: location.shelf,
       position: location.position,
+      dimensions: {
+        heightCm: location.heightCm,
+        widthCm: location.widthCm,
+        depthCm: location.depthCm,
+      },
+      height: analysis.warehouse.shelfHeights?.get(location.locationCode) ?? null,
       articles: placementsByLocation.get(location.locationCode) ?? [],
     });
   }
@@ -94,6 +100,9 @@ export function buildWarehouseStructureViewModel(analysis) {
       bays: result.reduce((sum, pickZone) => sum + pickZone.zones.reduce((zoneSum, zone) => zoneSum + zone.bays.length, 0), 0),
       pickLocations: analysis.warehouse.pickSequence.length,
       placedArticles: allArticles.length,
+      dimensionedLocations: analysis.warehouse.pickSequence.filter((entry) => (
+        [entry.location.heightCm, entry.location.widthCm, entry.location.depthCm].every(Number.isFinite)
+      )).length,
     },
   };
 }

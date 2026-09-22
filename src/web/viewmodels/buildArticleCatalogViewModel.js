@@ -1,5 +1,6 @@
 export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
   const movementThreshold = analysis.simulation?.movementThreshold ?? 0.20;
+  const observedWeekCount = analysis.articles.classification?.observedWeekCount ?? 0;
   const evaluationByArticle = new Map(
     analysis.evaluations.all.map((evaluation) => [evaluation.articleNumber, evaluation]),
   );
@@ -43,6 +44,9 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
       const physical = location
         ? physicalByLocation.get(location.locationCode) ?? null
         : null;
+      const shelfHeight = location
+        ? analysis.warehouse.shelfHeights?.get(location.locationCode) ?? null
+        : null;
 
       return {
         articleNumber: masterArticle.articleNumber,
@@ -50,15 +54,28 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
         weightKg: masterArticle.weightKg,
         temperatureZone: masterArticle.temperatureZone,
         category: masterArticle.category,
-        baseUnit: null,
+        baseUnit: masterArticle.baseUnit ?? null,
+        articleHeightCm: masterArticle.heightCm ?? null,
+        articleWidthCm: masterArticle.widthCm ?? null,
+        articleDepthCm: masterArticle.depthCm ?? null,
         pickFrequency: analyzed?.pickFrequency ?? 0,
         pickedQuantity: analyzed?.pickedQuantity ?? 0,
+        pickedQuantityPerWeek: observedWeekCount > 0
+          ? (analyzed?.pickedQuantity ?? 0) / observedWeekCount
+          : 0,
+        observedWeekCount,
         averageQuantityPerPick: analyzed?.averageQuantityPerPick ?? 0,
         pickZone: location?.pickZoneType ?? null,
         currentLocation: location?.locationCode ?? null,
         currentZone: location?.zone ?? null,
         currentSection: physical?.zoneSection ?? null,
         currentPosition: evaluation?.currentPosition ?? positioned?.relativePickPosition ?? null,
+        currentFloorHeightCm: shelfHeight?.floorHeightCm ?? null,
+        currentTopHeightCm: shelfHeight?.topHeightCm ?? null,
+        locationHeightCm: location?.heightCm ?? null,
+        locationWidthCm: location?.widthCm ?? null,
+        locationDepthCm: location?.depthCm ?? null,
+        locationVolumeM3: shelfHeight?.volumeM3 ?? null,
         priorityScore: evaluation?.priorityScore ?? null,
         desiredPosition: evaluation?.desiredPosition ?? null,
         placementGap: evaluation?.placementGap ?? null,

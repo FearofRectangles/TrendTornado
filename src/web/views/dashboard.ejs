@@ -187,34 +187,7 @@
 
 
       <div class="latest-analysis">
-
-        <div class="latest-analysis-title">
-          Senaste analys
-        </div>
-
-        <div>
-          <%= period.end.toLocaleDateString(
-            "sv-SE"
-          ) %>
-        </div>
-
-        <div class="latest-analysis-meta">
-          <%= importSummary
-            .validHistoryRecords
-            .toLocaleString("sv-SE")
-          %>
-          plockrader
-        </div>
-
-        <div class="analysis-ready">
-
-          <span class="status-dot">
-          </span>
-
-          Klar
-
-        </div>
-
+        <%- include('partials/analysis-selector') %>
       </div>
 
     </aside>
@@ -271,17 +244,7 @@
           </div>
 
 
-          <button
-            class="primary-button"
-            type="button"
-          >
-            Uppdatera analys
-
-            <span>
-              ↻
-            </span>
-
-          </button>
+          <a class="primary-button" href="/settings#analyses">Hantera analyser <span>→</span></a>
 
         </div>
 
@@ -522,15 +485,9 @@
                   <span
                     class="
                       pickzone-color
-                      pickzone-color-<%=
-                        zone.name
-                          .toLowerCase()
-                          .replace(
-                            'ö',
-                            'o'
-                          )
-                      %>
+                      has-pick-area-color
                     "
+                    style="--pick-area-color: <%= zone.color %>"
                   >
                   </span>
 
@@ -707,10 +664,6 @@
                   </th>
 
                   <th>
-                    Status
-                  </th>
-
-                  <th>
                   </th>
 
                 </tr>
@@ -731,8 +684,8 @@
                         .placementGap >= 0;
 
                     const zoneClass =
-                      recommendation
-                        .pickZone
+                      (recommendation
+                        .pickZone ?? "unknown")
                         .toLowerCase()
                         .replace(
                           "ö",
@@ -849,7 +802,9 @@
                           badge
                           zone-badge
                           zone-<%= zoneClass %>
+                          has-pick-area-color
                         "
+                        style="--pick-area-color: <%= pickAreaColors[recommendation.pickZone] ?? '#78827a' %>"
                       >
 
                         <%= recommendation
@@ -977,17 +932,6 @@
                     </td>
 
 
-                    <td>
-
-                      <span
-                        class="badge status-new"
-                      >
-                        Ny
-                      </span>
-
-                    </td>
-
-
                     <td class="details-arrow">
                       ›
                     </td>
@@ -1001,7 +945,7 @@
                     aria-hidden="true"
                   >
 
-                    <td colspan="11">
+                    <td colspan="10">
 
                       <div class="inline-details-animation">
 

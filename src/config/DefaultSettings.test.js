@@ -6,8 +6,12 @@ test("accepts and normalizes the default model settings", () => {
   assert.deepEqual(validateSettings(DEFAULT_SETTINGS), {
     analysis: { movementThreshold: 0.2, frequencyWeight: 0.7, handlingWeight: 0.3 },
     ergonomics: { lowPreferredKg: 4, lowStronglyRecommendedKg: 8 },
-    distance: { standardBayWidthMeters: 1 },
+    distance: { standardBayWidthMeters: 1, beamThicknessCm: 12 },
     classification: { abcAThreshold: 0.8, abcBThreshold: 0.95 },
+    warehouse: {
+      pickAreas: DEFAULT_SETTINGS.warehouse.pickAreas.map((area) => ({ ...area })),
+      zoneMappings: DEFAULT_SETTINGS.warehouse.zoneMappings.map((mapping) => ({ ...mapping })),
+    },
   });
 });
 

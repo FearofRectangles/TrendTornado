@@ -1,17 +1,8 @@
-import {
-  WarehouseDataLoader,
-} from "../../infrastructure/data/WarehouseDataLoader.js";
-
-import {
-  WarehouseAnalysisService,
-} from "../../application/analysis/WarehouseAnalysisService.js";
-
-import {
-  DataFiles,
-} from "../../config/DataFiles.js";
+import { AnalysisSnapshotService } from "../../application/analysis/AnalysisSnapshotService.js";
 import {
   buildRelocationViewModel,
 } from "../viewmodels/buildRelocationViewModel.js";
+import { DEFAULT_SETTINGS } from "../../config/DefaultSettings.js";
 import { SettingsRepository } from "../../infrastructure/settings/SettingsRepository.js";
 
 
@@ -19,41 +10,19 @@ export class DashboardController {
 
   static async index(req, res, next) {
     try {
-      const data =
-        await WarehouseDataLoader.load({
-          historyPath:
-            DataFiles.history,
+      const {
+        data,
+        analysis,
+        run: activeAnalysis,
+        runs: analysisRuns,
+      } = await AnalysisSnapshotService.getActive();
 
-          articlePath:
-            DataFiles.articles,
-
-          locationPath:
-            DataFiles.locations,
-
-          placementPath:
-            DataFiles.placements,
-        });
-
-      const settings =
-        await SettingsRepository.load();
-
-
-      const analysis =
-        WarehouseAnalysisService.analyze({
-          historyRecords:
-            data.historyRecords,
-
-          articles:
-            data.articles,
-
-          locations:
-            data.locations,
-
-          placementRecords:
-            data.placementRecords,
-
-          settings,
-        });
+      const currentSettings = await SettingsRepository.load();
+      const configuredPickAreas = currentSettings.warehouse?.pickAreas
+        ?? DEFAULT_SETTINGS.warehouse.pickAreas;
+      const pickAreaColors = Object.fromEntries(
+        configuredPickAreas.map((area) => [area.name, area.color]),
+      );
 
 
       // --------------------------------------------------
@@ -124,6 +93,7 @@ export class DashboardController {
       ].map(
         ([name, count]) => ({
           name,
+          color: pickAreaColors[name] ?? "#78827a",
 
           count,
 
@@ -430,6 +400,9 @@ export class DashboardController {
           pickZones,
 
           strongGapThreshold,
+          activeAnalysis,
+          analysisRuns,
+          pickAreaColors,
         },
       );
 

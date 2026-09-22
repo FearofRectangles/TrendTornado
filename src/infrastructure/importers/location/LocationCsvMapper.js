@@ -5,7 +5,17 @@ export function mapLocationCsvRow(row) {
   return new Location({
     locationCode: row.Lokation,
     purpose: mapLocationPurpose(row.Lager_DelOmråde),
+    heightCm: parseDimension(row.Højde),
+    widthCm: parseDimension(row.Bredde),
+    depthCm: parseDimension(row.Længde),
   });
+}
+
+function parseDimension(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const number = Number(String(value).trim().replace(",", "."));
+  if (!Number.isFinite(number) || number <= 0) return null;
+  return number;
 }
 
 function mapLocationPurpose(subArea) {

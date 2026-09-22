@@ -7,6 +7,10 @@ export class Article {
     weightKg,
     temperatureZone,
     category = null,
+    baseUnit = null,
+    heightCm = null,
+    widthCm = null,
+    depthCm = null,
   }) {
     this.#assertValidArticleNumber(articleNumber);
     this.#assertValidName(name);
@@ -18,6 +22,10 @@ export class Article {
     this.weightKg = weightKg;
     this.temperatureZone = temperatureZone;
     this.category = category;
+    this.baseUnit = baseUnit?.trim() || null;
+    this.heightCm = this.#optionalDimension(heightCm, "height");
+    this.widthCm = this.#optionalDimension(widthCm, "width");
+    this.depthCm = this.#optionalDimension(depthCm, "depth");
   }
 
   #assertValidArticleNumber(articleNumber) {
@@ -46,5 +54,13 @@ export class Article {
         `Invalid temperature zone. Expected one of: ${validZones.join(", ")}.`,
       );
     }
+  }
+
+  #optionalDimension(value, name) {
+    if (value === null || value === undefined || value === "") return null;
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(`Article ${name} must be greater than zero.`);
+    }
+    return value;
   }
 }

@@ -13,6 +13,7 @@ export class SettingsRepository {
         ergonomics: { ...DEFAULT_SETTINGS.ergonomics, ...stored.ergonomics },
         distance: { ...DEFAULT_SETTINGS.distance, ...stored.distance },
         classification: { ...DEFAULT_SETTINGS.classification, ...stored.classification },
+        warehouse: { ...DEFAULT_SETTINGS.warehouse, ...stored.warehouse },
       });
     } catch (error) {
       if (error.code === "ENOENT") return validateSettings(DEFAULT_SETTINGS);

@@ -18,13 +18,13 @@
         <a class="nav-item" href="/articles"><span class="nav-icon">▣</span>Artiklar</a>
         <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a><a class="nav-item" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
       </nav>
-      <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= period.end.toLocaleDateString('sv-SE') %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString('sv-SE') %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
+      <div class="latest-analysis"><%- include('partials/analysis-selector') %></div>
     </aside>
 
     <main class="main-content warehouse-workspace">
       <header class="page-header warehouse-header"><div><div class="page-eyebrow">Visuell lagerkarta</div><h1>Lagerstruktur</h1><p>Se flödet, hitta koncentrationer och öppna varje fack ner till hyllnivå.</p></div><div class="layout-toggle" title="Exakt optimerad slotplacering byggs i en kommande version"><button class="active" type="button">Nu</button><button type="button" disabled>Optimerat</button></div></header>
 
-      <section class="warehouse-summary"><div><strong><%= model.summary.pickZones %></strong><span>plockzoner</span></div><div><strong><%= model.summary.physicalZones %></strong><span>fysiska zoner</span></div><div><strong><%= model.summary.bays.toLocaleString('sv-SE') %></strong><span>fack</span></div><div><strong><%= model.summary.pickLocations.toLocaleString('sv-SE') %></strong><span>plockplatser</span></div><div><strong><%= model.summary.placedArticles.toLocaleString('sv-SE') %></strong><span>placerade artiklar</span></div></section>
+      <section class="warehouse-summary"><div><strong><%= model.summary.pickZones %></strong><span>plockzoner</span></div><div><strong><%= model.summary.physicalZones %></strong><span>fysiska zoner</span></div><div><strong><%= model.summary.bays.toLocaleString('sv-SE') %></strong><span>fack</span></div><div><strong><%= model.summary.pickLocations.toLocaleString('sv-SE') %></strong><span>plockplatser</span></div><div><strong><%= model.summary.dimensionedLocations.toLocaleString('sv-SE') %></strong><span>måttsatta platser</span></div><div><strong><%= model.summary.placedArticles.toLocaleString('sv-SE') %></strong><span>placerade artiklar</span></div></section>
 
       <div id="pickZoneTabs" class="pick-zone-tabs" role="tablist"><% model.pickZones.forEach((pickZone, index) => { %><button type="button" role="tab" data-pick-zone="<%= pickZone.name %>" aria-selected="<%= index === 0 %>"><%= pickZone.name %><small><%= pickZone.zones.length %> zoner</small></button><% }) %></div>
 

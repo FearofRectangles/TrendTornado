@@ -31,6 +31,10 @@ export function enrichArticleStatistics(statistics, articles) {
       temperatureZone:
         article?.temperatureZone ?? null,
       category: article?.category ?? null,
+      baseUnit: article?.baseUnit ?? null,
+      heightCm: article?.heightCm ?? null,
+      widthCm: article?.widthCm ?? null,
+      depthCm: article?.depthCm ?? null,
 
       pickFrequency: stats.pickFrequency,
       pickedQuantity: stats.pickedQuantity,

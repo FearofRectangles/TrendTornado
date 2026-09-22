@@ -22,3 +22,30 @@ assert.equal(result.relations[0].estimatedDistanceMeters, 80);
 assert.deepEqual(result.clusters[0].articleNumbers.sort(), ["F1", "F2"]);
 assert.equal(result.clusters[0].occurrenceCount, 10);
 console.log("AffinityClusterEngine tests passed");
+
+{
+  const denseProfiles = new Map(["A", "B", "C", "D", "E"].map((articleNumber, index) => [
+    articleNumber,
+    { articleNumber, pickZone: "KOLONIAL", currentPosition: index / 4, priorityScore: 0.8 },
+  ]));
+  const denseRecords = [];
+  let document = 0;
+  const addPair = (left, right) => {
+    for (let occurrence = 0; occurrence < 10; occurrence += 1) {
+      document += 1;
+      denseRecords.push({ articleNumber: left, documentNumber: `UT-${document}` });
+      denseRecords.push({ articleNumber: right, documentNumber: `UT-${document}` });
+    }
+  };
+  for (const [left, right] of [["A", "B"], ["A", "C"], ["A", "D"], ["B", "C"], ["B", "D"], ["C", "D"], ["A", "E"], ["B", "E"]]) addPair(left, right);
+  const denseResult = AffinityClusterEngine.analyze({
+    historyRecords: denseRecords,
+    profilesByArticle: denseProfiles,
+    minimumCommonOrders: 10,
+    minimumAffinity: 0.15,
+  });
+  const largest = denseResult.clusters.toSorted((a, b) => b.articleNumbers.length - a.articleNumbers.length)[0];
+  assert.deepEqual(new Set(largest.articleNumbers), new Set(["A", "B", "C", "D"]));
+  assert.ok(largest.associatedArticleNumbers.includes("E"));
+  assert.equal(denseResult.clusters.filter((cluster) => cluster.articleNumbers.length === 4).length, 1);
+}

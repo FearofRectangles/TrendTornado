@@ -1,31 +1,17 @@
-import { WarehouseDataLoader } from "../../infrastructure/data/WarehouseDataLoader.js";
-import { WarehouseAnalysisService } from "../../application/analysis/WarehouseAnalysisService.js";
-import { DataFiles } from "../../config/DataFiles.js";
+import { AnalysisSnapshotService } from "../../application/analysis/AnalysisSnapshotService.js";
 import { buildWarehouseStructureViewModel } from "../viewmodels/buildWarehouseStructureViewModel.js";
-import { SettingsRepository } from "../../infrastructure/settings/SettingsRepository.js";
 
 export class WarehouseStructureController {
   static async index(req, res, next) {
     try {
-      const data = await WarehouseDataLoader.load({
-        historyPath: DataFiles.history,
-        articlePath: DataFiles.articles,
-        locationPath: DataFiles.locations,
-        placementPath: DataFiles.placements,
-      });
-      const settings = await SettingsRepository.load();
-      const analysis = WarehouseAnalysisService.analyze({
-        historyRecords: data.historyRecords,
-        articles: data.articles,
-        locations: data.locations,
-        placementRecords: data.placementRecords,
-        settings,
-      });
+      const { data, analysis, run: activeAnalysis, runs: analysisRuns } = await AnalysisSnapshotService.getActive();
       res.render("warehouse-structure", {
         title: "Lagerstruktur",
         period: analysis.period,
         importSummary: data.importSummary,
-        model: buildWarehouseStructureViewModel(analysis),
+        model: AnalysisSnapshotService.derived(activeAnalysis.id, "warehouse-view", () => buildWarehouseStructureViewModel(analysis)),
+        activeAnalysis,
+        analysisRuns,
       });
     } catch (error) {
       next(error);

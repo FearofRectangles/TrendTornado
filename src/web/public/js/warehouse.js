@@ -61,7 +61,8 @@ function openBay(bayCode) {
   const bay = activeZone?.bays.find((item) => item.bay === bayCode);
   if (!bay) return;
   document.getElementById("selectedBayTitle").textContent = `${bay.zone}-${bay.bay}`;
-  document.getElementById("selectedBayMeta").textContent = `${bay.locations.length} plockplatser · ${bay.articleCount} placerade artiklar`;
+  const measured = bay.locations.filter((location) => location.height && Object.values(location.dimensions).every(Number.isFinite)).length;
+  document.getElementById("selectedBayMeta").textContent = `${bay.locations.length} plockplatser · ${bay.articleCount} placerade artiklar · ${measured} måttsatta`;
   const shelves = new Map();
   bay.locations.forEach((location) => {
     if (!shelves.has(location.shelf)) shelves.set(location.shelf, []);
@@ -70,9 +71,9 @@ function openBay(bayCode) {
   shelfStack.innerHTML = [...shelves]
     .sort(([a], [b]) => b.localeCompare(a, "sv", { numeric: true }))
     .map(([shelf, locations]) => `
-      <section class="shelf-row"><div class="shelf-label"><span>Hylla</span><strong>${escapeHtml(shelf)}</strong></div><div class="shelf-locations">
+      <section class="shelf-row"><div class="shelf-label"><span>Hylla</span><strong>${escapeHtml(shelf)}</strong><small>${locations[0].height ? `${formatCentimeters(locations[0].height.floorHeightCm)} över golv` : "höjd saknas"}</small></div><div class="shelf-locations">
         ${locations.sort((a, b) => a.position.localeCompare(b.position, "sv", { numeric: true })).map((location) => `
-          <article class="location-slot ${location.articles.length ? "occupied" : "empty"}"><div><span>${escapeHtml(location.locationCode)}</span><small>Position ${escapeHtml(location.position)}</small></div>
+          <article class="location-slot ${location.articles.length ? "occupied" : "empty"}"><div><span>${escapeHtml(location.locationCode)}</span><small>Position ${escapeHtml(location.position)}</small></div><div class="location-dimensions"><span>H ${dimension(location.dimensions.heightCm)}</span><span>B ${dimension(location.dimensions.widthCm)}</span><span>D ${dimension(location.dimensions.depthCm)}</span><span>${location.height?.volumeM3 == null ? "Volym —" : `${location.height.volumeM3.toLocaleString("sv-SE", { maximumFractionDigits: 3 })} m³`}</span></div><div class="location-height"><strong>${location.height ? `${formatCentimeters(location.height.floorHeightCm)}–${formatCentimeters(location.height.topHeightCm)}` : "Höjd över golv saknas"}</strong><small>över golv</small></div>
           ${location.articles.length ? location.articles.map((article) => `<a href="/articles/${encodeURIComponent(article.articleNumber)}"><strong>${escapeHtml(article.articleNumber)}</strong><span>${escapeHtml(article.name)}</span><small>${article.pickFrequency} plock · ${article.weightKg.toLocaleString("sv-SE")} kg</small></a>`).join("") : "<em>Tom plockplats</em>"}</article>
         `).join("")}
       </div></section>
@@ -80,6 +81,9 @@ function openBay(bayCode) {
   bayDrilldown.hidden = false;
   bayDrilldown.scrollIntoView({ behavior: "smooth", block: "start" });
 }
+
+function dimension(value) { return Number.isFinite(value) ? `${value.toLocaleString("sv-SE", { maximumFractionDigits: 1 })} cm` : "—"; }
+function formatCentimeters(value) { return Number.isFinite(value) ? `${value.toLocaleString("sv-SE", { maximumFractionDigits: 1 })} cm` : "—"; }
 
 tabs.forEach((tab) => tab.addEventListener("click", () => {
   activePickZone = tab.dataset.pickZone;

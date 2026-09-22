@@ -62,10 +62,12 @@ import {
 import {
   buildBayFlow,
 } from "../warehouse/BuildBayFlow.js";
+import { buildShelfHeights } from "../warehouse/BuildShelfHeights.js";
 
 import {
   resolveIdealPlacementArea,
 } from "../optimization/ResolveIdealPlacementArea.js";
+import { createPlacementOptionFinder } from "../optimization/PlacementOptionFinder.js";
 
 
 export class WarehouseAnalysisService {
@@ -221,6 +223,11 @@ const periodEnd =
         analyzedArticles,
         pickSequence,
       );
+
+    const shelfHeights = buildShelfHeights(
+      locations,
+      { beamThicknessCm: activeSettings.distance.beamThicknessCm },
+    );
 
     const classification =
       AbcXyzClassificationEngine.analyze(
@@ -484,7 +491,19 @@ const periodEnd =
     // --------------------------------------------------
 
     const relocationRecommendations =
-      rankedEvaluations
+      (() => {
+      const observedWeekCount = classification.observedWeekCount;
+      const weeklyQuantityByArticle = new Map(positionedArticles.map((article) => [
+        article.articleNumber,
+        observedWeekCount > 0 ? article.pickedQuantity / observedWeekCount : 0,
+      ]));
+      const findPlacementOptions = createPlacementOptionFinder({
+        locations,
+        placements: pickPlacements,
+        pickSequence,
+        weeklyQuantityByArticle,
+      });
+      return rankedEvaluations
         .map(
           (evaluation) => {
 
@@ -514,6 +533,10 @@ const periodEnd =
                 currentLocation.locationCode,
               );
 
+            const currentShelfHeight = shelfHeights.get(
+              currentLocation.locationCode,
+            ) ?? null;
+
             const recommendedArea =
               resolveIdealPlacementArea({
                 desiredPosition:
@@ -542,13 +565,19 @@ const periodEnd =
                     activeSettings.ergonomics.lowStronglyRecommendedKg,
                 });
 
+            const placementOptions = Math.abs(evaluation.placementGap) >= movementThreshold
+              ? findPlacementOptions({ article, currentLocation, desiredPosition: evaluation.desiredPosition })
+              : null;
+
             return {
               evaluation,
               article,
               currentLocation,
               currentPhysicalPosition,
+              currentShelfHeight,
               recommendedArea,
               ergonomicRecommendation,
+              placementOptions,
             };
           },
         )
@@ -556,6 +585,7 @@ const periodEnd =
           (recommendation) =>
             recommendation !== null,
         );
+      })();
 
 
     // --------------------------------------------------
@@ -614,6 +644,7 @@ const periodEnd =
         pickSequence,
         bayFlow,
         physicalZoneSequence,
+        shelfHeights,
       },
 
       placements: {

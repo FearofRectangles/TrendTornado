@@ -1,36 +1,25 @@
-import { WarehouseDataLoader } from "../../infrastructure/data/WarehouseDataLoader.js";
-import { WarehouseAnalysisService } from "../../application/analysis/WarehouseAnalysisService.js";
-import { DataFiles } from "../../config/DataFiles.js";
+import { AnalysisSnapshotService } from "../../application/analysis/AnalysisSnapshotService.js";
 import { buildArticleCatalogViewModel } from "../viewmodels/buildArticleCatalogViewModel.js";
 import { PickAffinityEngine } from "../../domain/analytics/affinity/PickAffinityEngine.js";
 import { SettingsRepository } from "../../infrastructure/settings/SettingsRepository.js";
 
 async function loadCatalog() {
-  const data = await WarehouseDataLoader.load({
-    historyPath: DataFiles.history,
-    articlePath: DataFiles.articles,
-    locationPath: DataFiles.locations,
-    placementPath: DataFiles.placements,
-  });
+  const { data, analysis, run: activeAnalysis, runs: analysisRuns } = await AnalysisSnapshotService.getActive();
   const settings = await SettingsRepository.load();
-  const analysis = WarehouseAnalysisService.analyze({
-    historyRecords: data.historyRecords,
-    articles: data.articles,
-    locations: data.locations,
-    placementRecords: data.placementRecords,
-    settings,
-  });
   return {
     data,
     analysis,
-    articles: buildArticleCatalogViewModel(analysis, data.articles),
+    articles: AnalysisSnapshotService.derived(activeAnalysis.id, "article-catalog", () => buildArticleCatalogViewModel(analysis, data.articles)),
+    activeAnalysis,
+    analysisRuns,
+    pickAreaColors: Object.fromEntries(settings.warehouse.pickAreas.map((area) => [area.name, area.color])),
   };
 }
 
 export class ArticleController {
   static async index(req, res, next) {
     try {
-      const { data, analysis, articles } = await loadCatalog();
+      const { data, analysis, articles, activeAnalysis, analysisRuns, pickAreaColors } = await loadCatalog();
       const unique = (values) => [...new Set(values.filter(Boolean))]
         .sort((a, b) => a.localeCompare(b, "sv", { numeric: true }));
 
@@ -39,6 +28,9 @@ export class ArticleController {
         articles,
         period: analysis.period,
         importSummary: data.importSummary,
+        activeAnalysis,
+        analysisRuns,
+        pickAreaColors,
         filters: {
           pickZones: unique(articles.map((article) => article.pickZone)),
           temperatureZones: unique(articles.map((article) => article.temperatureZone)),
@@ -51,7 +43,7 @@ export class ArticleController {
 
   static async show(req, res, next) {
     try {
-      const { data, analysis, articles } = await loadCatalog();
+      const { data, analysis, articles, activeAnalysis, analysisRuns, pickAreaColors } = await loadCatalog();
       const articleNumber = String(req.params.articleNumber ?? "").trim();
       const article = articles.find((item) => item.articleNumber === articleNumber);
 
@@ -88,6 +80,9 @@ export class ArticleController {
         affinity,
         period: analysis.period,
         importSummary: data.importSummary,
+        activeAnalysis,
+        analysisRuns,
+        pickAreaColors,
       });
     } catch (error) {
       next(error);

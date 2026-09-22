@@ -48,6 +48,9 @@ test("maps a real warehouse export row", () => {
     Lager_Område: "ÖVRIGT",
     Lager_DelOmråde: "ÖVRIGT_Plock",
     Status: "1",
+    Længde: "120.000",
+    Højde: "148.000",
+    Bredde: "40.000",
   };
 
   const location = mapLocationCsvRow(row);
@@ -57,4 +60,7 @@ test("maps a real warehouse export row", () => {
   assert.equal(location.shelf, "01");
   assert.equal(location.position, "01");
   assert.equal(location.purpose, LocationPurpose.PICK);
+  assert.equal(location.depthCm, 120);
+  assert.equal(location.heightCm, 148);
+  assert.equal(location.widthCm, 40);
 });

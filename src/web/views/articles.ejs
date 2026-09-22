@@ -24,7 +24,7 @@
         <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
         <a class="nav-item" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
       </nav>
-      <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= period.end.toLocaleDateString("sv-SE") %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString("sv-SE") %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
+      <div class="latest-analysis"><%- include('partials/analysis-selector') %></div>
     </aside>
 
     <main class="main-content article-workspace">
@@ -53,7 +53,7 @@
                   <td><div class="article-table-name"><%= article.name %></div></td>
                   <td><% if (article.classification) { %><span class="classification-badge class-<%= article.classification.abcClass.toLowerCase() %>"><%= article.classification.classification %></span><% } else { %><span class="missing-value">—</span><% } %></td>
                   <td><%= article.weightKg.toLocaleString("sv-SE", { maximumFractionDigits: 2 }) %> kg</td>
-                  <td><% if (article.pickZone) { %><span class="badge zone-badge"><%= article.pickZone %></span><% } else { %><span class="missing-value">Saknas</span><% } %></td>
+                  <td><% if (article.pickZone) { %><span class="badge zone-badge has-pick-area-color" style="--pick-area-color: <%= pickAreaColors[article.pickZone] ?? '#78827a' %>"><%= article.pickZone %></span><% } else { %><span class="missing-value">Saknas</span><% } %></td>
                   <td><% if (article.currentLocation) { %><strong class="article-location"><%= article.currentLocation %></strong><small><%= article.currentSection ?? 'Okänd sektion' %></small><% } else { %><span class="missing-value">Ingen plockplats</span><% } %></td>
                   <td><strong><%= article.pickFrequency.toLocaleString("sv-SE") %></strong><small><%= article.pickedQuantity.toLocaleString("sv-SE") %> enheter</small></td>
                   <td><% if (article.priorityScore !== null) { %><div class="priority-cell"><div><i style="width:<%= article.priorityScore * 100 %>%"></i></div><strong><%= article.priorityScore.toFixed(2).replace('.', ',') %></strong></div><% } else { %><span class="missing-value">Ej beräknad</span><% } %></td>

@@ -11,6 +11,10 @@ test("maps article CSV row to Article", () => {
     Basenhet: "BURK",
     Nettovikt: "2.6",
     Förvaringstyp: "Kolonial",
+    Produktgruppkod: "42",
+    "Höjd (cm)": "21",
+    "Bredd (cm)": "17",
+    "Djup (cm)": "17",
   };
 
   const article = mapArticleCsvRow(row);
@@ -19,6 +23,9 @@ test("maps article CSV row to Article", () => {
   assert.equal(article.name, "3-Mixbönor EKO 2,6kg");
   assert.equal(article.weightKg, 2.6);
   assert.equal(article.temperatureZone, TemperatureZone.KOL);
+  assert.equal(article.baseUnit, "BURK");
+  assert.equal(article.category, "42");
+  assert.deepEqual([article.heightCm, article.widthCm, article.depthCm], [21, 17, 17]);
 });
 test("maps storage type Frys to FRYST", () => {
   const row = {

@@ -22,6 +22,10 @@ test("enriches article statistics with article data", () => {
       weightKg: 2.6,
       temperatureZone: "KOL",
       category: null,
+      baseUnit: "BURK",
+      heightCm: 21,
+      widthCm: 17,
+      depthCm: 17,
     },
   ];
 
@@ -43,6 +47,8 @@ test("enriches article statistics with article data", () => {
   );
 
   assert.equal(result[0].weightKg, 2.6);
+  assert.equal(result[0].baseUnit, "BURK");
+  assert.deepEqual([result[0].heightCm, result[0].widthCm, result[0].depthCm], [21, 17, 17]);
   assert.equal(
     result[0].temperatureZone,
     "KOL",

@@ -1,2 +1,4 @@
 data/imports/
 data/config/settings.json
+data/analysis/*.sqlite*
+data/uploads/

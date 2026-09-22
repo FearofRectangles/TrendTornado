@@ -1,0 +1,11 @@
+<div class="latest-analysis-title">Aktiv analys</div>
+<form class="analysis-selector" method="post" action="/analyses/activate">
+  <select name="analysisId" aria-label="Välj aktiv analys" onchange="this.form.submit()">
+    <% analysisRuns.filter((run) => run.status === 'COMPLETED').forEach((run) => { %>
+      <option value="<%= run.id %>" <%= run.isActive ? 'selected' : '' %>><%= run.name %></option>
+    <% }) %>
+  </select>
+</form>
+<div class="latest-analysis-meta"><%= activeAnalysis?.periodStart ?? '' %> – <%= activeAnalysis?.periodEnd ?? '' %></div>
+<div class="latest-analysis-meta"><%= (activeAnalysis?.inputRows ?? 0).toLocaleString('sv-SE') %> plockrader</div>
+<div class="analysis-ready"><span class="status-dot"></span>Klar</div>

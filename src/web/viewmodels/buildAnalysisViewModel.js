@@ -94,8 +94,14 @@ export function buildAnalysisViewModel(analysis) {
         item.ergonomicRecommendation.recommendation === "LOW_STRONGLY_RECOMMENDED"
       )).length,
       locationHeightAvailable: analysis.warehouse.pickSequence.some((entry) => (
-        entry.location.ergonomicLevel !== null
+        Number.isFinite(analysis.warehouse.shelfHeights?.get(entry.location.locationCode)?.floorHeightCm)
       )),
+      heavyArticlesAboveLowZone: analysis.recommendations.filter((item) => (
+        (item.ergonomicRecommendation.recommendation === "LOW_PREFERRED" ||
+          item.ergonomicRecommendation.recommendation === "LOW_STRONGLY_RECOMMENDED") &&
+        Number.isFinite(item.currentShelfHeight?.floorHeightCm) &&
+        item.currentShelfHeight.floorHeightCm > 70
+      )).length,
     },
     simulation: {
       baseline,

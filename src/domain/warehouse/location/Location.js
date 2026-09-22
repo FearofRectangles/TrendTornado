@@ -10,6 +10,9 @@ export class Location {
     locationCode,
     purpose,
     ergonomicLevel = null,
+    heightCm = null,
+    widthCm = null,
+    depthCm = null,
   }) {
     this.#assertValidLocationCode(locationCode);
     this.#assertValidPurpose(purpose);
@@ -17,6 +20,11 @@ export class Location {
     this.locationCode = locationCode;
     this.purpose = purpose;
     this.ergonomicLevel = ergonomicLevel;
+    this.heightCm = this.#optionalDimension(heightCm, "height");
+    this.widthCm = this.#optionalDimension(widthCm, "width");
+    this.depthCm = this.#optionalDimension(depthCm, "depth");
+    this.resolvedTemperatureZone = getTemperatureZoneFromZoneCode(this.locationCode.slice(0, 2));
+    this.resolvedPickZoneType = getPickZoneTypeFromZoneCode(this.locationCode.slice(0, 2));
   }
 
   get zone() {
@@ -36,15 +44,11 @@ export class Location {
   }
 
   get temperatureZone() {
-    return getTemperatureZoneFromZoneCode(
-      this.zone,
-    );
+    return this.resolvedTemperatureZone ?? getTemperatureZoneFromZoneCode(this.zone);
   }
 
   get pickZoneType() {
-    return getPickZoneTypeFromZoneCode(
-      this.zone,
-    );
+    return this.resolvedPickZoneType ?? getPickZoneTypeFromZoneCode(this.zone);
   }
 
   get isPickLocation() {
@@ -90,5 +94,13 @@ export class Location {
         `Invalid location purpose. Expected one of: ${validPurposes.join(", ")}.`,
       );
     }
+  }
+
+  #optionalDimension(value, name) {
+    if (value === null || value === undefined || value === "") return null;
+    if (!Number.isFinite(value) || value <= 0) {
+      throw new Error(`Location ${name} must be greater than zero.`);
+    }
+    return value;
   }
 }

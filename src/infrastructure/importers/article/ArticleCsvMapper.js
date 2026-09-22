@@ -7,7 +7,18 @@ export function mapArticleCsvRow(row) {
     name: row.Beskrivning,
     weightKg: parseWeight(row.Nettovikt, row.Nr),
     temperatureZone: mapStorageType(row.Förvaringstyp),
+    category: row.Produktgruppkod?.trim() || null,
+    baseUnit: row.Basenhet,
+    heightCm: parseDimension(row["Höjd (cm)"]),
+    widthCm: parseDimension(row["Bredd (cm)"]),
+    depthCm: parseDimension(row["Djup (cm)"]),
   });
+}
+
+function parseDimension(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const dimension = Number(String(value).trim().replace(",", "."));
+  return Number.isFinite(dimension) && dimension > 0 ? dimension : null;
 }
 
 function mapStorageType(storageType) {

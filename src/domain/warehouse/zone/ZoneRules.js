@@ -1,32 +1,15 @@
-import { TemperatureZone } from "../../shared/TemperatureZone.js";
-import { PickZoneType } from "../../shared/PickZoneType.js";
+import { DEFAULT_SETTINGS } from "../../../config/DefaultSettings.js";
 
-const zoneProfiles = Object.freeze([
-  {
-    from: 1,
-    to: 9,
-    temperatureZone: TemperatureZone.KOL,
-    pickZoneType: PickZoneType.KOLONIAL,
-  },
-  {
-    from: 11,
-    to: 14,
-    temperatureZone: TemperatureZone.KYLD,
-    pickZoneType: PickZoneType.KYLT,
-  },
-  {
-    from: 20,
-    to: 22,
-    temperatureZone: TemperatureZone.KYLD,
-    pickZoneType: PickZoneType.GRONSAKER,
-  },
-  {
-    from: 30,
-    to: 39,
-    temperatureZone: TemperatureZone.FRYST,
-    pickZoneType: PickZoneType.FRYS,
-  },
-]);
+let zoneProfiles = DEFAULT_SETTINGS.warehouse.zoneMappings.map((mapping) => ({ ...mapping }));
+
+export function configureZoneMappings(mappings) {
+  if (!Array.isArray(mappings) || mappings.length === 0) throw new Error("Zone mappings are required.");
+  zoneProfiles = mappings.map((mapping) => ({
+    physicalZone: String(mapping.physicalZone).padStart(2, "0"),
+    temperatureZone: String(mapping.temperatureZone),
+    pickZoneType: String(mapping.pickZoneType),
+  }));
+}
 
 export function getZoneProfiles() {
   return zoneProfiles.map((profile) => ({ ...profile }));
@@ -50,13 +33,7 @@ function getZoneProfile(zoneCode) {
     );
   }
 
-  const numericZoneCode = Number(zoneCode);
-
-  const profile = zoneProfiles.find(
-    ({ from, to }) =>
-      numericZoneCode >= from &&
-      numericZoneCode <= to,
-  );
+  const profile = zoneProfiles.find(({ physicalZone }) => physicalZone === zoneCode);
 
   if (!profile) {
     throw new Error(

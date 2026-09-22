@@ -39,10 +39,7 @@
       </nav>
 
       <div class="latest-analysis">
-        <div class="latest-analysis-title">Senaste analys</div>
-        <div><%= period.end.toLocaleDateString("sv-SE") %></div>
-        <div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString("sv-SE") %> plockrader</div>
-        <div class="analysis-ready"><span class="status-dot"></span>Klar</div>
+        <%- include('partials/analysis-selector') %>
       </div>
     </aside>
 
@@ -66,7 +63,7 @@
       <section class="relocation-filters card">
         <div class="filter-heading">
           <div><h2>Filtrera arbetslistan</h2><p>Kombinera filter för att hitta rätt flyttar.</p></div>
-          <button id="clearFilters" class="clear-filters" type="button">Rensa filter</button>
+          <div class="filter-actions"><button id="exportRelocations" class="export-relocations" type="button">Exportera PDF</button><button id="clearFilters" class="clear-filters" type="button">Rensa filter</button></div>
         </div>
         <div class="filter-grid">
           <label>Plockzon<select id="pickZoneFilter"><option value="">Alla plockzoner</option><% filters.pickZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
@@ -76,6 +73,8 @@
           <label>Nuvarande zon<select id="currentZoneFilter"><option value="">Alla zoner</option><% filters.currentZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
           <label>Rekommenderad zon<select id="recommendedZoneFilter"><option value="">Alla zoner</option><% filters.recommendedZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></label>
           <label>Minsta gap<div class="gap-filter"><input id="minimumGapFilter" type="range" min="20" max="100" value="20" step="5"><output id="minimumGapValue">20 %</output></div></label>
+          <label>Minsta prioritet<select id="minimumUtilityFilter"><option value="0">Alla nivåer</option><option value="40">Medel · 40+</option><option value="65">Hög · 65+</option><option value="80">Mycket hög · 80+</option></select></label>
+          <label>Sortering<select id="relocationSort"><option value="utility">Högst prioritet</option><option value="gap">Störst gap</option><option value="quantity">Högst åtgång</option><option value="article">Artikelnummer</option></select></label>
           <label class="search-filter">Sök artikel<input id="relocationSearch" type="search" placeholder="Artikelnummer eller namn..."></label>
         </div>
       </section>
@@ -87,20 +86,21 @@
         </div>
         <div class="relocation-table-wrap">
           <table class="work-table">
-            <thead><tr><th>Artikel</th><th>Namn</th><th>Klass</th><th>Plockzon</th><th>Nu</th><th></th><th>Rekommenderat</th><th>Gap</th><th>Ergonomi</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th>Prio</th><th>Artikel</th><th>Namn</th><th>Klass</th><th>Åtgång/vecka</th><th>Plockzon</th><th>Nu</th><th></th><th>Rekommenderat</th><th>Gap</th><th>Ergonomi</th><th></th></tr></thead>
             <tbody>
               <% recommendations.forEach((item) => { const earlier = item.direction === "EARLIER"; %>
-                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-pick-zone="<%= item.pickZone %>" data-classification="<%= item.classification?.classification ?? '' %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
+                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-pick-zone="<%= item.pickZone %>" data-classification="<%= item.classification?.classification ?? '' %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-utility="<%= item.utility.score %>" data-quantity="<%= item.pickedQuantityPerWeek %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
+                  <td><span class="utility-score"><strong><%= item.utility.score %></strong><small><%= item.utility.label %></small></span></td>
                   <td><strong><%= item.articleNumber %></strong></td>
                   <td><div class="work-name"><%= item.name %></div></td>
                   <td><% if (item.classification) { %><span class="badge class-<%= item.classification.abcClass.toLowerCase() %>"><%= item.classification.classification %></span><% } else { %>—<% } %></td>
-                  <td><span class="badge zone-badge"><%= item.pickZone %></span></td>
+                  <td><strong><%= item.pickedQuantityPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 1 }) %></strong><small>enheter/vecka</small></td>
+                  <td><span class="badge zone-badge has-pick-area-color" style="--pick-area-color: <%= pickAreaColors[item.pickZone] ?? '#78827a' %>"><%= item.pickZone %></span></td>
                   <td><strong class="work-location"><%= item.currentZone %> <%= item.currentSection %></strong><small><%= (item.currentPosition * 100).toFixed(1) %> %</small></td>
                   <td class="work-direction <%= earlier ? 'earlier' : 'later' %>"><%= earlier ? '↑' : '↓' %></td>
                   <td><strong class="work-location"><%= item.recommendedZone %> <%= item.recommendedSection %></strong><small><%= (item.desiredPosition * 100).toFixed(1) %> %</small></td>
                   <td><span class="badge <%= earlier ? 'gap-earlier' : 'gap-later' %>"><%= earlier ? '+' : '−' %><%= Math.abs(item.placementGap * 100).toFixed(1) %> %</span></td>
                   <td><span class="ergonomic-dot <%= item.ergonomicRecommendation.toLowerCase() %>" title="<%= item.ergonomicRecommendation %>"></span><%= item.ergonomicRecommendation === 'LOW_STRONGLY_RECOMMENDED' ? 'Låg rekommenderas' : item.ergonomicRecommendation === 'LOW_PREFERRED' ? 'Låg föredras' : 'Flexibel' %></td>
-                  <td><span class="badge work-status" data-status-for="<%= item.articleNumber %>">Ny</span></td>
                   <td class="open-arrow">›</td>
                 </tr>
               <% }) %>
@@ -118,7 +118,9 @@
     <div id="drawerContent"></div>
   </aside>
 
-  <script id="relocationData" type="application/json"><%- JSON.stringify(recommendations).replace(/</g, "\\u003c") %></script>
+  <form id="relocationExportForm" method="post" action="/relocations/export.pdf" hidden><input id="exportArticleNumbers" name="articleNumbers" type="hidden"></form>
+
+  <script id="relocationData" type="application/json"><%- JSON.stringify(drawerRecommendations).replace(/</g, "\\u003c") %></script>
   <script src="/js/relocations.js"></script>
 </body>
 </html>

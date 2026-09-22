@@ -17,7 +17,7 @@ export function buildAffinityViewModel({ analysis, historyRecords, masterArticle
     standardBayWidthMeters: settings.distance.standardBayWidthMeters,
   });
   const clusters = result.clusters.map((cluster) => {
-    const { relations, articles: clusterArticles, ...clusterSummary } = cluster;
+    const { relations, articles: clusterArticles, associatedArticles: clusterAssociatedArticles, ...clusterSummary } = cluster;
     const { commonOrderDocuments, ...strongestRelation } = cluster.strongestRelation;
     const strongestLeft = profilesByArticle.get(cluster.strongestRelation.leftArticleNumber);
     const strongestRight = profilesByArticle.get(cluster.strongestRelation.rightArticleNumber);
@@ -30,6 +30,15 @@ export function buildAffinityViewModel({ analysis, historyRecords, masterArticle
       ...clusterSummary,
       strongestRelation,
       articles: clusterArticles.map((article) => ({
+        articleNumber: article.articleNumber,
+        name: article.name,
+        currentPosition: article.currentPosition,
+        currentLocation: article.currentLocation,
+        classification: article.classification
+          ? { classification: article.classification.classification }
+          : null,
+      })),
+      associatedArticles: clusterAssociatedArticles.map((article) => ({
         articleNumber: article.articleNumber,
         name: article.name,
         currentPosition: article.currentPosition,

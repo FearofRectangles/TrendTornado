@@ -1,6 +1,9 @@
+import { RelocationUtilityEngine } from "../../application/optimization/RelocationUtilityEngine.js";
+
 export function buildRelocationViewModel(analysis) {
   const movementThreshold =
     analysis.simulation?.movementThreshold ?? 0.20;
+  const observedWeekCount = analysis.articles?.classification?.observedWeekCount ?? 0;
   const recommendations = analysis.recommendations
     .filter((recommendation) => recommendation.recommendedArea !== null)
     .map((recommendation) => {
@@ -16,10 +19,11 @@ export function buildRelocationViewModel(analysis) {
       return {
         articleNumber: article.articleNumber,
         name: article.name ?? "UNKNOWN",
-        pickZone: currentLocation.pickZoneType,
+        pickZone: currentLocation.pickZoneType ?? "UNKNOWN",
         currentLocation: currentLocation.locationCode,
         currentZone: currentLocation.zone,
         currentSection: currentPhysicalPosition?.zoneSection ?? "UNKNOWN",
+        currentFloorHeightCm: recommendation.currentShelfHeight?.floorHeightCm ?? null,
         currentPosition: evaluation.currentPosition,
         recommendedZone: recommendedArea.zone,
         recommendedSection: recommendedArea.section,
@@ -31,21 +35,22 @@ export function buildRelocationViewModel(analysis) {
         averageHandledWeightPerPick: evaluation.averageHandledWeightPerPick,
         pickFrequency: article.pickFrequency,
         pickedQuantity: article.pickedQuantity,
+        pickedQuantityPerWeek: observedWeekCount > 0
+          ? article.pickedQuantity / observedWeekCount
+          : 0,
+        observedWeekCount,
         averageQuantityPerPick: article.averageQuantityPerPick,
         unitWeightKg: article.weightKg,
         frequencyScore: evaluation.frequencyScore,
         handlingScore: evaluation.handlingScore,
         priorityScore: evaluation.priorityScore,
-        status: "NEW",
         classification: analysis.articles?.classification?.byArticle.get(article.articleNumber) ?? null,
+        placementOptions: recommendation.placementOptions ?? null,
       };
     });
 
-  return recommendations
+  return RelocationUtilityEngine.score(recommendations
     .filter((recommendation) => (
       Math.abs(recommendation.placementGap) >= movementThreshold
-    ))
-    .toSorted((a, b) => (
-      Math.abs(b.placementGap) - Math.abs(a.placementGap)
-    ));
+    )));
 }

@@ -23,7 +23,7 @@
         <a class="nav-item" href="#"><span class="nav-icon">◷</span>Historik</a>
         <a class="nav-item" href="/settings"><span class="nav-icon">⚙</span>Inställningar</a>
       </nav>
-      <div class="latest-analysis"><div class="latest-analysis-title">Senaste analys</div><div><%= period.end.toLocaleDateString("sv-SE") %></div><div class="latest-analysis-meta"><%= importSummary.validHistoryRecords.toLocaleString("sv-SE") %> plockrader</div><div class="analysis-ready"><span class="status-dot"></span>Klar</div></div>
+      <div class="latest-analysis"><%- include('partials/analysis-selector') %></div>
     </aside>
 
     <main class="main-content analysis-workspace">
@@ -43,7 +43,7 @@
       </section>
 
       <section class="analysis-section weight-section">
-        <div class="analysis-copy"><span class="section-number">03</span><h2>Vikt och ergonomi</h2><p>Hanterad vikt beräknas som artikelvikt multiplicerad med genomsnittlig mängd per stopp. Den påverkar 30 % av prioriteten och avgör samtidigt om en låg placering bör rekommenderas.</p><div class="ergonomic-totals"><div><strong><%= model.weight.lowPreferred.toLocaleString('sv-SE') %></strong><span>låg föredras</span></div><div><strong><%= model.weight.lowStronglyRecommended.toLocaleString('sv-SE') %></strong><span>låg starkt rekommenderad</span></div></div><% if (!model.weight.locationHeightAvailable) { %><p class="data-note"><strong>Databegränsning:</strong> Lagerfilen innehåller inte hyllornas ergonomiska höjdnivå. Motorn kan därför rekommendera låg placering, men ännu inte jämföra rekommendationen med faktisk hyllhöjd.</p><% } %></div>
+        <div class="analysis-copy"><span class="section-number">03</span><h2>Vikt och ergonomi</h2><p>Hanterad vikt beräknas som artikelvikt multiplicerad med genomsnittlig mängd per stopp. Den påverkar 30 % av prioriteten och avgör samtidigt om en låg placering bör rekommenderas.</p><div class="ergonomic-totals"><div><strong><%= model.weight.lowPreferred.toLocaleString('sv-SE') %></strong><span>låg föredras</span></div><div><strong><%= model.weight.lowStronglyRecommended.toLocaleString('sv-SE') %></strong><span>låg starkt rekommenderad</span></div><% if (model.weight.locationHeightAvailable) { %><div><strong><%= model.weight.heavyArticlesAboveLowZone.toLocaleString('sv-SE') %></strong><span>tunga artiklar över 70 cm</span></div><% } %></div><% if (!model.weight.locationHeightAvailable) { %><p class="data-note"><strong>Databegränsning:</strong> Lagerfilen innehåller inte tillräckliga mått för att beräkna hyllhöjder.</p><% } else { %><p class="data-note"><strong>Höjdmodell aktiv:</strong> Hyllans nederkant beräknas från underliggande fria höjder plus balkhöjden från Inställningar.</p><% } %></div>
         <div class="analysis-card card"><div class="chart-heading"><div><h3>Hanterad vikt per plock</h3><p><%= model.weight.evaluatedArticles.toLocaleString('sv-SE') %> utvärderade artiklar</p></div><span>kg/stopp</span></div><div class="horizontal-bars"><% model.weight.bins.forEach((bin) => { %><div class="horizontal-row"><span><%= bin.label %></span><div><i style="width:<%= Math.max(1, bin.count / maxWeightBin * 100) %>%"></i></div><strong><%= bin.count.toLocaleString('sv-SE') %></strong></div><% }) %></div></div>
       </section>
 

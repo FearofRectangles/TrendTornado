@@ -1,4 +1,7 @@
 :root {
+  --font-caption: 10px;
+  --font-small: 11px;
+  --font-body: 12px;
   --background:
     #f8faf8;
 
@@ -64,6 +67,38 @@
 
   --radius:
     14px;
+}
+
+/* ================================================== */
+/* Readability baseline                                */
+/* ================================================== */
+
+body {
+  font-size: var(--font-body);
+  line-height: 1.45;
+}
+
+small,
+table th,
+.latest-analysis-title,
+.latest-analysis-meta,
+.page-eyebrow,
+.section-number {
+  font-size: var(--font-caption) !important;
+  line-height: 1.4;
+}
+
+table td {
+  font-size: var(--font-small) !important;
+}
+
+p,
+.details-score-row span,
+.inline-detail-metric span,
+.inline-detail-heading,
+.inline-detail-heading strong {
+  font-size: var(--font-small) !important;
+  line-height: 1.5;
 }
 
 
@@ -422,6 +457,10 @@ a {
   color:
     var(--text-muted);
 }
+
+.analysis-selector select { width: 100%; min-height: 34px; margin: 4px 0 7px; padding: 0 8px; border: 1px solid rgb(255 255 255 / 22%); border-radius: 6px; background: rgb(255 255 255 / 9%); color: inherit; font: inherit; font-weight: 700; }
+.analysis-selector option { color: #1c2920; background: #fff; }
+.primary-button { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
 
 
 .analysis-ready {
@@ -1436,6 +1475,12 @@ a {
     uppercase;
 }
 
+.zone-badge.has-pick-area-color {
+  color: var(--pick-area-color);
+  border: 1px solid color-mix(in srgb, var(--pick-area-color) 24%, transparent);
+  background: color-mix(in srgb, var(--pick-area-color) 12%, white);
+}
+
 
 .zone-kolonial {
   color:
@@ -1700,6 +1745,10 @@ a {
     50%;
 }
 
+.pickzone-color.has-pick-area-color {
+  background: var(--pick-area-color);
+}
+
 
 .pickzone-color-kolonial {
   background:
@@ -1722,6 +1771,16 @@ a {
 .pickzone-color-frys {
   background:
     #d74a43;
+}
+
+.zone-badge.has-pick-area-color {
+  color: var(--pick-area-color) !important;
+  border-color: color-mix(in srgb, var(--pick-area-color) 24%, transparent) !important;
+  background: color-mix(in srgb, var(--pick-area-color) 12%, white) !important;
+}
+
+.pickzone-color.has-pick-area-color {
+  background: var(--pick-area-color) !important;
 }
 
 /* ================================================== */

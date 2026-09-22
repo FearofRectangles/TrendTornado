@@ -40,6 +40,7 @@ function recommendation(articleNumber, placementGap) {
 
 test("builds, filters and sorts the shared relocation view model", () => {
   const result = buildRelocationViewModel({
+    articles: { classification: { observedWeekCount: 8, byArticle: new Map() } },
     recommendations: [
       recommendation("A", 0.19),
       recommendation("B", -0.45),
@@ -50,6 +51,7 @@ test("builds, filters and sorts the shared relocation view model", () => {
   assert.deepEqual(result.map((item) => item.articleNumber), ["B", "C"]);
   assert.equal(result[0].direction, "LATER");
   assert.equal(result[1].direction, "EARLIER");
+  assert.ok(result[0].utility.score > result[1].utility.score);
   assert.equal(result[0].pickFrequency, 20);
-  assert.equal(result[0].status, "NEW");
+  assert.equal(result[0].pickedQuantityPerWeek, 5);
 });
