@@ -21,7 +21,7 @@ export class RelocationController {
       const pickAreaColors = Object.fromEntries(
         configuredPickAreas.map((area) => [area.name, area.color]),
       );
-      const recommendations = AnalysisSnapshotService.derived(activeAnalysis.id, "relocations", () => buildRelocationViewModel(analysis));
+      const recommendations = AnalysisSnapshotService.derived(activeAnalysis.id, "relocations", () => buildRelocationViewModel(analysis, activeAnalysis.settings));
       placementOptionsByArticle.clear();
       recommendations.forEach((item) => {
         placementOptionsByArticle.set(String(item.articleNumber), item.placementOptions ?? null);
@@ -105,7 +105,7 @@ export class RelocationController {
   static async exportPdf(req, res, next) {
     try {
       const { analysis, run } = await AnalysisSnapshotService.getActive();
-      const recommendations = AnalysisSnapshotService.derived(run.id, "relocations", () => buildRelocationViewModel(analysis));
+      const recommendations = AnalysisSnapshotService.derived(run.id, "relocations", () => buildRelocationViewModel(analysis, run.settings));
       const byArticle = new Map(recommendations.map((item) => [String(item.articleNumber), item]));
       const requested = String(req.body.articleNumbers ?? "").split(",").map((value) => value.trim()).filter(Boolean);
       const selected = requested.map((articleNumber) => byArticle.get(articleNumber)).filter(Boolean);

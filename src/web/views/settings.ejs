@@ -8,7 +8,7 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="/"><div class="brand-mark">◉</div><div><div class="brand-name">Trend<span>Tornado</span></div><div class="brand-subtitle">lite hit och lite dit</div></div></a>
+      <a class="brand" href="/" aria-label="TrendTornado – översikt"><img class="brand-logo" src="/assets/trendtornado-logo.png" alt="TrendTornado"></a>
       <nav class="sidebar-nav">
         <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
         <div class="nav-group"><a class="nav-item" href="/relocations"><span class="nav-icon">⇄</span>Flyttare<span class="nav-chevron">⌃</span></a><div class="nav-subitems"><a class="nav-subitem" href="/relocations">Alla flyttare</a><a class="nav-subitem" href="/relocations/earlier">Flytta tidigare</a><a class="nav-subitem" href="/relocations/later">Flytta senare</a></div></div>
@@ -27,6 +27,7 @@
       <% if (dataSourceChanged) { %><div class="settings-message success">✓ Datakällan inaktiverades. Sparade analyser påverkas inte.</div><% } %>
       <% if (zonesSaved) { %><div class="settings-message success">✓ Lagerreglerna sparades och används när nästa analys skapas.</div><% } %>
       <% if (pickAreasSaved) { %><div class="settings-message success">✓ Plockområden och färger sparades.</div><% } %>
+      <% if (articleRulesSaved) { %><div class="settings-message success">✓ Artikelundantagen sparades och används när nästa analys skapas.</div><% } %>
       <% if (analysisDeleted) { %><div class="settings-message success">✓ Analysen togs bort.</div><% } %>
       <% if (importError) { %><div class="settings-message error"><strong>Ändringen kunde inte genomföras.</strong><span><%= importError %></span></div><% } %>
 
@@ -83,6 +84,18 @@
         <div class="settings-savebar"><div><strong>Spara modellregler</strong><span>Ändringarna används när nästa analys skapas. Befintliga analyser ändras inte.</span></div><button id="saveSettings" type="submit">Spara inställningar</button></div>
       </form>
 
+      <section id="article-rules" class="settings-section card">
+        <div class="settings-section-intro"><span>05</span><h2>Artikelundantag</h2><p>Styr artiklar som inte ska påverka analysen eller inte ska visas som flyttkandidater. Reglerna används när nästa analys skapas.</p></div>
+        <form class="article-rule-form" method="post" action="/settings/article-rules">
+          <div id="articleRuleRows" class="article-rule-rows">
+            <% settings.articleRules.forEach((rule) => { const mode = rule.excludeFromAnalysis && rule.hideRelocation ? 'BOTH' : rule.excludeFromAnalysis ? 'ANALYSIS' : 'RELOCATION'; %>
+              <div class="article-rule-row"><input name="articleNumber" type="text" value="<%= rule.articleNumber %>" placeholder="Artikelnummer" required><select name="ruleMode"><option value="ANALYSIS" <%= mode === 'ANALYSIS' ? 'selected' : '' %>>Exkludera från analys och statistik</option><option value="RELOCATION" <%= mode === 'RELOCATION' ? 'selected' : '' %>>Dölj endast som flyttkandidat</option><option value="BOTH" <%= mode === 'BOTH' ? 'selected' : '' %>>Båda</option></select><button class="remove-article-rule" type="button" aria-label="Ta bort artikelundantag">×</button></div>
+            <% }) %>
+          </div>
+          <div class="article-rule-actions"><button id="addArticleRule" class="secondary-setting-button" type="button">Lägg till artikel</button><button type="submit">Spara artikelundantag</button></div>
+        </form>
+      </section>
+
       <section id="pick-areas" class="settings-section card">
         <div class="settings-section-intro"><span>05</span><h2>Plockområden</h2><p>Definiera lagerdelarnas namn och färg en gång. Lagerzonerna väljer sedan bland dessa områden.</p></div>
         <form class="pick-area-form" method="post" action="/settings/pick-areas">
@@ -113,7 +126,7 @@
               <div class="source-card-heading"><div><strong><%= card.title %></strong><p><%= card.description %></p></div><span><%= matchingSources.filter((source) => source.status === 'ACTIVE').length %> aktiva</span></div>
               <div class="source-upload" data-source-type="<%= card.type %>"><input class="source-file" type="file" accept=".csv,text/csv"><% if (card.effective) { %><input class="source-effective-date" type="date" value="<%= new Date().toISOString().slice(0,10) %>" aria-label="Gäller från"><% } %><button class="source-upload-button" type="button">Importera CSV</button><small class="source-upload-status"></small></div>
               <details class="source-version-details"><summary>Visa <%= matchingSources.length %> fil<%= matchingSources.length === 1 ? '' : 'er' %></summary><div class="source-version-list">
-                <% matchingSources.forEach((source) => { %><div class="source-version"><span class="source-state <%= source.status.toLowerCase() %>"><%= source.status === 'ACTIVE' ? 'AKTIV' : source.status === 'SUPERSEDED' ? 'TIDIGARE' : 'INAKTIV' %></span><div><strong><%= source.originalFilename %></strong><small><%= source.rowCount ? source.rowCount.toLocaleString('sv-SE') + ' rader · ' : '' %>Importerad <%= new Date(source.importedAt).toLocaleString('sv-SE', { dateStyle:'short', timeStyle:'short' }) %><% if (source.periodStart) { %> · <%= source.periodStart %>–<%= source.periodEnd %><% } %></small><% if (source.validation.overlappingDocuments) { %><em><%= source.validation.overlappingDocuments.toLocaleString('sv-SE') %> överlappande dokument · <%= source.validation.overlappingRows.toLocaleString('sv-SE') %> rader ignoreras vid analys</em><% } %></div><% if (source.type === sourceTypes.HISTORY && source.status === 'ACTIVE') { %><form method="post" action="/settings/data-sources/deactivate"><input type="hidden" name="sourceId" value="<%= source.id %>"><button type="submit">Inaktivera</button></form><% } else if (source.status !== 'ACTIVE') { %><form method="post" action="/settings/data-sources/activate"><input type="hidden" name="sourceId" value="<%= source.id %>"><button type="submit">Aktivera</button></form><% } %></div><% }) %>
+                <% matchingSources.forEach((source) => { %><div class="source-version"><span class="source-state <%= source.status.toLowerCase() %>"><%= source.status === 'ACTIVE' ? 'AKTIV' : source.status === 'SUPERSEDED' ? 'TIDIGARE' : 'INAKTIV' %></span><div><strong><%= source.originalFilename %></strong><small><%= source.rowCount ? source.rowCount.toLocaleString('sv-SE') + ' rader · ' : '' %>Importerad <%= new Date(source.importedAt).toLocaleString('sv-SE', { dateStyle:'short', timeStyle:'short' }) %><% if (source.periodStart) { %> · <%= source.periodStart %>–<%= source.periodEnd %><% } %></small><% if (source.validation.overlappingDocuments) { %><em><%= source.validation.overlappingDocuments.toLocaleString('sv-SE') %> överlappande dokument · <%= source.validation.overlappingRows.toLocaleString('sv-SE') %> rader ignoreras vid analys</em><% } %><% if (source.validation.placementFormat) { %><em><%= source.validation.placementFormat === 'WMS_ITEM_PLACING_LOC' ? 'Direkt WMS-export' : 'Konverterad CSV' %> · <%= (source.validation.validRows ?? source.rowCount ?? 0).toLocaleString('sv-SE') %> giltiga placeringar<% if (source.validation.ignoredRows) { %> · <%= source.validation.ignoredRows.toLocaleString('sv-SE') %> rader ignorerade<% } %></em><% } %></div><% if (source.type === sourceTypes.HISTORY && source.status === 'ACTIVE') { %><form method="post" action="/settings/data-sources/deactivate"><input type="hidden" name="sourceId" value="<%= source.id %>"><button type="submit">Inaktivera</button></form><% } else if (source.status !== 'ACTIVE') { %><form method="post" action="/settings/data-sources/activate"><input type="hidden" name="sourceId" value="<%= source.id %>"><button type="submit">Aktivera</button></form><% } %></div><% }) %>
               </div></details>
             </article>
           <% }) %>

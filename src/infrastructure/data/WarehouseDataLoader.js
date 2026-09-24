@@ -1,6 +1,7 @@
 import {
   readCsvFile,
 } from "../csv/CsvReader.js";
+import { readPlacementCsvFile } from "../csv/PlacementCsvReader.js";
 
 import {
   mapPickHistoryCsvRow,
@@ -67,13 +68,13 @@ export class WarehouseDataLoader {
         locationPath,
       );
 
-    const placementRows =
-      await readCsvFile(
+    const placementSource =
+      await readPlacementCsvFile(
         placementPath,
-        {
-          fromLine: 2,
-        },
       );
+
+    const placementRows =
+      placementSource.rows;
 
 
     // --------------------------------------------------
@@ -206,6 +207,12 @@ export class WarehouseDataLoader {
 
         validPlacementRecords:
           placementRecords.length,
+
+        placementFormat:
+          placementSource.diagnostics.format,
+
+        ignoredPlacementRows:
+          placementSource.diagnostics.ignoredRows,
       },
 
       invalidLocationRows,

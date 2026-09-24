@@ -28,12 +28,15 @@ dashboardRoutes.get(
   "/",
   DashboardController.index,
 );
+dashboardRoutes.get("/api/calendar", DashboardController.calendar);
 
 dashboardRoutes.get("/relocations", RelocationController.index);
 dashboardRoutes.get("/relocations/:view", RelocationController.index);
 dashboardRoutes.get("/api/relocations/:articleNumber/options", RelocationController.placementOptions);
 dashboardRoutes.post("/relocations/export.pdf", RelocationController.exportPdf);
 dashboardRoutes.get("/articles", ArticleController.index);
+dashboardRoutes.post("/articles/export.pdf", ArticleController.exportPdf);
+dashboardRoutes.get("/api/articles/:articleNumber", ArticleController.detail);
 dashboardRoutes.get("/articles/:articleNumber", ArticleController.show);
 dashboardRoutes.get("/analysis", AnalysisController.index);
 dashboardRoutes.get("/affinity", AffinityController.index);
@@ -48,3 +51,4 @@ dashboardRoutes.post("/settings/data-sources/deactivate", SettingsController.dea
 dashboardRoutes.post("/settings/data-sources/activate", SettingsController.activateDataSource);
 dashboardRoutes.post("/settings/zones", SettingsController.saveZoneMappings);
 dashboardRoutes.post("/settings/pick-areas", SettingsController.savePickAreas);
+dashboardRoutes.post("/settings/article-rules", SettingsController.saveArticleRules);

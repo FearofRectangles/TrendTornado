@@ -55,3 +55,11 @@ test("builds, filters and sorts the shared relocation view model", () => {
   assert.equal(result[0].pickFrequency, 20);
   assert.equal(result[0].pickedQuantityPerWeek, 5);
 });
+
+test("hides configured articles only from relocation candidates", () => {
+  const result = buildRelocationViewModel({
+    articles: { classification: { observedWeekCount: 8, byArticle: new Map() } },
+    recommendations: [recommendation("VISIBLE", 0.4), recommendation("HIDDEN", 0.5)],
+  }, { articleRules: [{ articleNumber: "HIDDEN", hideRelocation: true }] });
+  assert.deepEqual(result.map((item) => item.articleNumber), ["VISIBLE"]);
+});

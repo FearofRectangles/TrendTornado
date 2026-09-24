@@ -8,11 +8,22 @@ test("accepts and normalizes the default model settings", () => {
     ergonomics: { lowPreferredKg: 4, lowStronglyRecommendedKg: 8 },
     distance: { standardBayWidthMeters: 1, beamThicknessCm: 12 },
     classification: { abcAThreshold: 0.8, abcBThreshold: 0.95 },
+    articleRules: DEFAULT_SETTINGS.articleRules.map((rule) => ({ ...rule })),
     warehouse: {
       pickAreas: DEFAULT_SETTINGS.warehouse.pickAreas.map((area) => ({ ...area })),
       zoneMappings: DEFAULT_SETTINGS.warehouse.zoneMappings.map((mapping) => ({ ...mapping })),
     },
   });
+});
+
+test("rejects duplicate article exceptions", () => {
+  assert.throws(() => validateSettings({
+    ...DEFAULT_SETTINGS,
+    articleRules: [
+      { articleNumber: "123", excludeFromAnalysis: true, hideRelocation: false },
+      { articleNumber: "123", excludeFromAnalysis: false, hideRelocation: true },
+    ],
+  }), /unikt artikelnummer/);
 });
 
 test("rejects priority weights that do not total one hundred percent", () => {

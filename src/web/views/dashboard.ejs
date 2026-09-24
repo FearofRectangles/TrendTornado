@@ -31,25 +31,7 @@
 
     <aside class="sidebar">
 
-      <div class="brand">
-
-        <div class="brand-mark">
-          ◉
-        </div>
-
-        <div>
-
-          <div class="brand-name">
-            Trend<span>Tornado</span>
-          </div>
-
-          <div class="brand-subtitle">
-            lite hit och lite dit
-          </div>
-
-        </div>
-
-      </div>
+      <a class="brand" href="/" aria-label="TrendTornado – översikt"><img class="brand-logo" src="/assets/trendtornado-logo.png" alt="TrendTornado"></a>
 
 
       <nav class="sidebar-nav">
@@ -1073,15 +1055,13 @@
 
           <div class="calendar-header">
 
-            <span>
-            </span>
+            <button id="calendarPrevious" class="ghost-button" type="button" aria-label="Föregående månad">‹</button>
 
-            <strong>
+            <strong id="calendarMonthLabel" data-month="<%= calendar.monthKey %>">
               <%= calendar.monthLabel %>
             </strong>
 
-            <span>
-            </span>
+            <button id="calendarNext" class="ghost-button" type="button" aria-label="Nästa månad">›</button>
 
           </div>
 
@@ -1099,7 +1079,7 @@
           </div>
 
 
-          <div class="calendar-grid">
+          <div id="calendarGrid" class="calendar-grid">
 
             <% calendar.days.forEach(
               (calendarDay) => {

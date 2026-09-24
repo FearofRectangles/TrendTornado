@@ -1,6 +1,7 @@
-export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
+export function buildArticleCatalogViewModel(analysis, masterArticles = [], settings = {}) {
   const movementThreshold = analysis.simulation?.movementThreshold ?? 0.20;
   const observedWeekCount = analysis.articles.classification?.observedWeekCount ?? 0;
+  const hiddenRelocations = new Set((settings.articleRules ?? []).filter((rule) => rule.hideRelocation).map((rule) => rule.articleNumber));
   const evaluationByArticle = new Map(
     analysis.evaluations.all.map((evaluation) => [evaluation.articleNumber, evaluation]),
   );
@@ -59,6 +60,9 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
         articleWidthCm: masterArticle.widthCm ?? null,
         articleDepthCm: masterArticle.depthCm ?? null,
         pickFrequency: analyzed?.pickFrequency ?? 0,
+        pickStopsPerWeek: observedWeekCount > 0
+          ? (analyzed?.pickFrequency ?? 0) / observedWeekCount
+          : 0,
         pickedQuantity: analyzed?.pickedQuantity ?? 0,
         pickedQuantityPerWeek: observedWeekCount > 0
           ? (analyzed?.pickedQuantity ?? 0) / observedWeekCount
@@ -83,7 +87,7 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = []) {
         direction: evaluation
           ? evaluation.placementGap >= 0 ? "EARLIER" : "LATER"
           : null,
-        isRelocationCandidate: evaluation
+        isRelocationCandidate: evaluation && !hiddenRelocations.has(masterArticle.articleNumber)
           ? Math.abs(evaluation.placementGap) >= movementThreshold
           : false,
         recommendedZone: recommendation?.recommendedArea?.zone ?? null,

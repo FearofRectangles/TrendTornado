@@ -1,11 +1,13 @@
 import { RelocationUtilityEngine } from "../../application/optimization/RelocationUtilityEngine.js";
 
-export function buildRelocationViewModel(analysis) {
+export function buildRelocationViewModel(analysis, settings = {}) {
   const movementThreshold =
     analysis.simulation?.movementThreshold ?? 0.20;
   const observedWeekCount = analysis.articles?.classification?.observedWeekCount ?? 0;
+  const hiddenRelocations = new Set((settings.articleRules ?? []).filter((rule) => rule.hideRelocation).map((rule) => rule.articleNumber));
   const recommendations = analysis.recommendations
     .filter((recommendation) => recommendation.recommendedArea !== null)
+    .filter((recommendation) => !hiddenRelocations.has(recommendation.article.articleNumber))
     .map((recommendation) => {
       const {
         evaluation,

@@ -13,6 +13,7 @@ export class SettingsRepository {
         ergonomics: { ...DEFAULT_SETTINGS.ergonomics, ...stored.ergonomics },
         distance: { ...DEFAULT_SETTINGS.distance, ...stored.distance },
         classification: { ...DEFAULT_SETTINGS.classification, ...stored.classification },
+        articleRules: stored.articleRules ?? DEFAULT_SETTINGS.articleRules,
         warehouse: { ...DEFAULT_SETTINGS.warehouse, ...stored.warehouse },
       });
     } catch (error) {

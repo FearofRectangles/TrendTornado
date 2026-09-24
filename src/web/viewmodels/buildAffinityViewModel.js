@@ -34,6 +34,8 @@ export function buildAffinityViewModel({ analysis, historyRecords, masterArticle
         name: article.name,
         currentPosition: article.currentPosition,
         currentLocation: article.currentLocation,
+        physicalZone: physicalZone(article.currentLocation),
+        flowSection: flowSection(article.currentPosition),
         classification: article.classification
           ? { classification: article.classification.classification }
           : null,
@@ -43,6 +45,8 @@ export function buildAffinityViewModel({ analysis, historyRecords, masterArticle
         name: article.name,
         currentPosition: article.currentPosition,
         currentLocation: article.currentLocation,
+        physicalZone: physicalZone(article.currentLocation),
+        flowSection: flowSection(article.currentPosition),
         classification: article.classification
           ? { classification: article.classification.classification }
           : null,
@@ -64,6 +68,18 @@ export function buildAffinityViewModel({ analysis, historyRecords, masterArticle
     },
     diagnostics: result.diagnostics,
   };
+}
+
+function physicalZone(location) {
+  const code = String(location ?? "");
+  return /^\d{2}/.test(code) ? code.slice(0, 2) : "—";
+}
+
+function flowSection(position) {
+  if (!Number.isFinite(position)) return "Okänd";
+  if (position < 1 / 3) return "Början";
+  if (position < 2 / 3) return "Mitten";
+  return "Slutet";
 }
 
 function buildPriorityReason(cluster) {

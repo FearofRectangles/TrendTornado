@@ -65,3 +65,10 @@ test("ignores rows without a location code", () => {
     null,
   );
 });
+
+test("ignores WMS system locations", () => {
+  assert.equal(
+    mapPlacementCsvRow({ Plats: "Sys-9001", Varunummer: "BOX10180277" }),
+    null,
+  );
+});

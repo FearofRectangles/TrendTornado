@@ -30,7 +30,7 @@ export class DashboardController {
       // --------------------------------------------------
 
       const relocationCandidates =
-        buildRelocationViewModel(analysis);
+        buildRelocationViewModel(analysis, activeAnalysis.settings);
 
 
       // --------------------------------------------------
@@ -410,6 +410,21 @@ export class DashboardController {
       next(error);
     }
   }
+
+  static async calendar(req, res, next) {
+    try {
+      const { data, analysis } = await AnalysisSnapshotService.getActive();
+      const requestedMonth = /^\d{4}-\d{2}$/.test(String(req.query.month ?? ""))
+        ? String(req.query.month)
+        : `${analysis.period.end.getFullYear()}-${String(analysis.period.end.getMonth() + 1).padStart(2, "0")}`;
+      const [year, month] = requestedMonth.split("-").map(Number);
+      const periodEnd = new Date(year, month - 1, 15);
+      if (Number.isNaN(periodEnd.getTime()) || month < 1 || month > 12) return res.status(400).json({ error: "Ogiltig månad." });
+      return res.json(buildCalendar({ historyRecords: data.historyRecords, periodEnd }));
+    } catch (error) {
+      return next(error);
+    }
+  }
 }
 
 
@@ -541,6 +556,7 @@ function buildCalendar({
 
 
   return {
+    monthKey: `${year}-${String(month + 1).padStart(2, "0")}`,
     monthLabel:
       capitalizeFirst(
         monthLabel,

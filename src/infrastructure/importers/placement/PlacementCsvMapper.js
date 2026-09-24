@@ -17,7 +17,7 @@ export function mapPlacementCsvRow(row) {
 
   // Zonrubriker, tomma rader och andra rader som
   // inte beskriver en faktisk artikelplacering ignoreras.
-  if (!articleNumber || !locationCode) {
+  if (!articleNumber || !/^\d{9}$/.test(locationCode)) {
     return null;
   }
 

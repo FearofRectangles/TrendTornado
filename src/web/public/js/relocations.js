@@ -36,6 +36,9 @@ const number = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 2 });
 const pageSize = 25;
 let currentPage = 1;
 let previouslyFocusedRow = null;
+let sortKey = "utility";
+let sortDirection = "desc";
+const sortableHeaders = [...document.querySelectorAll(".work-table th[data-sort]")];
 
 function escapeHtml(value) {
   return String(value)
@@ -62,15 +65,11 @@ function filteredRows() {
 }
 
 function render() {
-  const comparator = {
-    utility: (a, b) => Number(b.dataset.utility) - Number(a.dataset.utility),
-    gap: (a, b) => Number(b.dataset.gap) - Number(a.dataset.gap),
-    quantity: (a, b) => Number(b.dataset.quantity) - Number(a.dataset.quantity),
-    article: (a, b) => a.dataset.articleNumber.localeCompare(b.dataset.articleNumber, "sv", { numeric: true }),
-  }[controls.sort.value];
-  rows = rows.toSorted(comparator);
+  const getValue = (row) => ({ utility: Number(row.dataset.utility), article: row.dataset.articleNumber, name: row.dataset.name, classification: row.dataset.classification, quantity: Number(row.dataset.quantity), pickZone: row.dataset.pickZone, current: row.dataset.currentZone, recommended: row.dataset.recommendedZone, gap: Number(row.dataset.gap), ergonomics: row.dataset.ergonomic })[sortKey];
+  rows = rows.toSorted((left, right) => { const a = getValue(left); const b = getValue(right); const comparison = typeof a === "number" ? a - b : String(a ?? "").localeCompare(String(b ?? ""), "sv", { numeric: true }); return sortDirection === "asc" ? comparison : -comparison; });
   const body = document.querySelector(".work-table tbody");
   rows.forEach((row) => body.appendChild(row));
+  sortableHeaders.forEach((header) => header.setAttribute("aria-sort", header.dataset.sort === sortKey ? (sortDirection === "asc" ? "ascending" : "descending") : "none"));
   const matches = filteredRows();
   const totalPages = Math.max(1, Math.ceil(matches.length / pageSize));
   currentPage = Math.min(currentPage, totalPages);
@@ -97,6 +96,29 @@ function ergonomicLabel(value) {
   if (value === "LOW_STRONGLY_RECOMMENDED") return "Låg rekommenderas";
   if (value === "LOW_PREFERRED") return "Låg föredras";
   return "Flexibel placering";
+}
+
+function pickStopRate(totalStops, observedWeeks) {
+  if (!Number.isFinite(totalStops) || totalStops <= 0) {
+    return { value: "Inga stopp", note: "under analysperioden" };
+  }
+  if (!Number.isFinite(observedWeeks) || observedWeeks <= 0) {
+    return { value: `${number.format(totalStops)} stopp`, note: "analysperiodens längd saknas" };
+  }
+  const perWeek = totalStops / observedWeeks;
+  if (perWeek >= 1) {
+    return { value: `${number.format(perWeek)} stopp/vecka`, note: `snitt över ${number.format(observedWeeks)} veckor` };
+  }
+  const weeksPerMonth = 52 / 12;
+  const perMonth = perWeek * weeksPerMonth;
+  if (perMonth >= 1) {
+    return { value: `${number.format(perMonth)} stopp/månad`, note: `motsvarar ${number.format(perWeek)} per vecka` };
+  }
+  const intervalMonths = observedWeeks / totalStops / weeksPerMonth;
+  return {
+    value: `≈ 1 stopp var ${number.format(intervalMonths)} ${intervalMonths >= 1.5 ? "månader" : "månad"}`,
+    note: `${number.format(totalStops)} stopp på ${number.format(observedWeeks)} veckor`,
+  };
 }
 
 function utilityExplanation(utility) {
@@ -139,6 +161,7 @@ async function openDrawer(articleNumber, sourceRow) {
   if (!item) return;
   previouslyFocusedRow = sourceRow;
   const earlier = item.direction === "EARLIER";
+  const stopRate = pickStopRate(item.pickFrequency, item.observedWeekCount);
   drawerContent.innerHTML = `
     <div class="drawer-eyebrow">Flyttkandidat</div>
     <h2 id="drawerTitle">${escapeHtml(item.articleNumber)}</h2>
@@ -150,7 +173,8 @@ async function openDrawer(articleNumber, sourceRow) {
     </div>
     <div class="drawer-metrics">
       <div><span>Gap</span><strong>${earlier ? "+" : "−"}${number.format(Math.abs(item.placementGap * 100))} %</strong></div>
-      <div><span>Plockfrekvens</span><strong>${number.format(item.pickFrequency)}</strong></div>
+      <div><span>Plockstopp totalt</span><strong>${number.format(item.pickFrequency)}</strong><small>under analysperioden</small></div>
+      <div><span>Stopptakt</span><strong>${stopRate.value}</strong><small>${stopRate.note}</small></div>
       <div><span>Åtgång/vecka</span><strong>${number.format(item.pickedQuantityPerWeek)} enheter</strong><small>Snitt över ${number.format(item.observedWeekCount)} veckor</small></div>
       <div><span>ABC/XYZ</span><strong>${escapeHtml(item.classification?.classification ?? "—")}</strong></div>
       <div><span>Snitt/plock</span><strong>${number.format(item.averageQuantityPerPick)}</strong></div>
@@ -193,15 +217,26 @@ function closeDrawer() {
 }
 
 Object.values(controls).forEach((control) => {
-  control.addEventListener(control === controls.search ? "input" : "change", resetAndRender);
+  control.addEventListener(control === controls.search ? "input" : "change", () => {
+    if (control === controls.sort) { sortKey = control.value; sortDirection = control.value === "article" ? "asc" : "desc"; }
+    resetAndRender();
+  });
 });
 controls.minimumGap.addEventListener("input", resetAndRender);
 clearFiltersButton.addEventListener("click", () => {
   Object.values(controls).forEach((control) => {
     control.value = control === controls.minimumGap ? "20" : control === controls.sort ? "utility" : "";
   });
+  sortKey = "utility"; sortDirection = "desc";
   resetAndRender();
 });
+sortableHeaders.forEach((header) => header.addEventListener("click", () => {
+  sortDirection = sortKey === header.dataset.sort && sortDirection === "asc" ? "desc" : "asc";
+  sortKey = header.dataset.sort;
+  if ([...controls.sort.options].some((option) => option.value === sortKey)) controls.sort.value = sortKey;
+  else controls.sort.selectedIndex = -1;
+  resetAndRender();
+}));
 exportButton.addEventListener("click", () => {
   const matches = filteredRows();
   if (matches.length === 0) return;

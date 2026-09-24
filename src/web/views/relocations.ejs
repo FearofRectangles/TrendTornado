@@ -11,11 +11,7 @@
   <div class="app-shell">
     <aside class="sidebar">
       <a class="brand" href="/">
-        <div class="brand-mark">◉</div>
-        <div>
-          <div class="brand-name">Trend<span>Tornado</span></div>
-          <div class="brand-subtitle">lite hit och lite dit</div>
-        </div>
+        <img class="brand-logo" src="/assets/trendtornado-logo.png" alt="TrendTornado">
       </a>
 
       <nav class="sidebar-nav">
@@ -86,10 +82,10 @@
         </div>
         <div class="relocation-table-wrap">
           <table class="work-table">
-            <thead><tr><th>Prio</th><th>Artikel</th><th>Namn</th><th>Klass</th><th>Åtgång/vecka</th><th>Plockzon</th><th>Nu</th><th></th><th>Rekommenderat</th><th>Gap</th><th>Ergonomi</th><th></th></tr></thead>
+            <thead><tr><th data-sort="utility">Prio</th><th data-sort="article">Artikel</th><th data-sort="name">Namn</th><th data-sort="classification">Klass</th><th data-sort="quantity">Åtgång/vecka</th><th data-sort="pickZone">Plockzon</th><th data-sort="current">Nu</th><th></th><th data-sort="recommended">Rekommenderat</th><th data-sort="gap">Gap</th><th data-sort="ergonomics">Ergonomi</th><th></th></tr></thead>
             <tbody>
               <% recommendations.forEach((item) => { const earlier = item.direction === "EARLIER"; %>
-                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-pick-zone="<%= item.pickZone %>" data-classification="<%= item.classification?.classification ?? '' %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-utility="<%= item.utility.score %>" data-quantity="<%= item.pickedQuantityPerWeek %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
+                <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-name="<%= item.name.toLowerCase() %>" data-pick-zone="<%= item.pickZone %>" data-classification="<%= item.classification?.classification ?? '' %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-utility="<%= item.utility.score %>" data-quantity="<%= item.pickedQuantityPerWeek %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
                   <td><span class="utility-score"><strong><%= item.utility.score %></strong><small><%= item.utility.label %></small></span></td>
                   <td><strong><%= item.articleNumber %></strong></td>
                   <td><div class="work-name"><%= item.name %></div></td>

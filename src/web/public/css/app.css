@@ -458,6 +458,13 @@ a {
     var(--text-muted);
 }
 
+.brand-logo {
+  display: block;
+  width: 170px;
+  height: auto;
+  mix-blend-mode: multiply;
+}
+
 .analysis-selector select { width: 100%; min-height: 34px; margin: 4px 0 7px; padding: 0 8px; border: 1px solid rgb(255 255 255 / 22%); border-radius: 6px; background: rgb(255 255 255 / 9%); color: inherit; font: inherit; font-weight: 700; }
 .analysis-selector option { color: #1c2920; background: #fff; }
 .primary-button { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; }
@@ -1474,6 +1481,19 @@ a {
   text-transform:
     uppercase;
 }
+
+.calendar-header .ghost-button { border-radius: 7px; color: #245b45; }
+.calendar-header .ghost-button:hover { background: #eef5f1; }
+.calendar-header .ghost-button:disabled { opacity: .35; cursor: wait; }
+
+.cluster-table-wrap th[data-sort],
+.work-table th[data-sort] { cursor: pointer; user-select: none; white-space: nowrap; }
+.cluster-table-wrap th[data-sort]::after,
+.work-table th[data-sort]::after { content: "↕"; margin-left: 5px; color: #87938b; font-size: .9em; }
+.cluster-table-wrap th[aria-sort="ascending"]::after,
+.work-table th[aria-sort="ascending"]::after { content: "↑"; color: #16724b; }
+.cluster-table-wrap th[aria-sort="descending"]::after,
+.work-table th[aria-sort="descending"]::after { content: "↓"; color: #16724b; }
 
 .zone-badge.has-pick-area-color {
   color: var(--pick-area-color);

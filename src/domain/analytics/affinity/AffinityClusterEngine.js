@@ -120,7 +120,10 @@ export class AffinityClusterEngine {
             if (!members.has(relation.rightArticleNumber)) candidateNumbers.add(relation.rightArticleNumber);
           }
         }
-        const requiredConnections = Math.max(2, Math.ceil(members.size * minimumConnectionShare));
+        // A third member previously had to be connected to both seed articles.
+        // That reduced most valid affinity communities to isolated pairs. Allow
+        // one strong bridge while the density check below still prevents loose chains.
+        const requiredConnections = Math.max(1, Math.ceil(members.size * minimumConnectionShare));
         const candidates = [...candidateNumbers].map((articleNumber) => {
           const connections = [...members]
             .map((member) => relationByPair.get(pairKey(articleNumber, member)))
@@ -164,7 +167,13 @@ export class AffinityClusterEngine {
         const connectionCount = articleNumbers.filter((other) => (
           other !== articleNumber && relationByPair.has(pairKey(articleNumber, other))
         )).length;
-        return connectionCount / (articleNumbers.length - 1) >= coreConnectionShare;
+        // Three-article chains are meaningful communities even when the two
+        // endpoints never occur together. Larger clusters still require a
+        // strongly connected core; weaker members remain associated articles.
+        const requiredCoreConnections = articleNumbers.length === 3
+          ? 1
+          : Math.ceil((articleNumbers.length - 1) * coreConnectionShare);
+        return connectionCount >= requiredCoreConnections;
       });
       const effectiveCore = coreArticleNumbers.length >= 2 ? coreArticleNumbers : [seed.leftArticleNumber, seed.rightArticleNumber];
       const signature = [...effectiveCore].sort().join("\u0000");

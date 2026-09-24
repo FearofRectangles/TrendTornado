@@ -42,3 +42,19 @@ test("includes master articles without history and enriches analyzed articles", 
   assert.equal(result[1].pickFrequency, 0);
   assert.equal(result[1].priorityScore, null);
 });
+
+test("keeps a hidden relocation article searchable in the catalog", () => {
+  const location = { locationCode: "200010101", zone: "20", pickZoneType: "KOLONIAL" };
+  const master = { articleNumber: "A", name: "Fast placering", weightKg: 2, temperatureZone: "KOL" };
+  const analysis = {
+    evaluations: { all: [{ articleNumber: "A", currentPosition: .8, desiredPosition: .1, placementGap: .7, priorityScore: .9 }] },
+    recommendations: [],
+    warehouse: { physicalZoneSequence: [{ location, zoneSection: "BEGINNING" }], pickSequence: [{ location, relativePickPosition: .8 }] },
+    placements: { pickPlacements: [] },
+    articles: { classification: { observedWeekCount: 5, byArticle: new Map() }, positioned: [{ ...master, pickFrequency: 10, pickedQuantity: 10, positionedPickLocations: [{ location, relativePickPosition: .8 }] }] },
+  };
+  const [article] = buildArticleCatalogViewModel(analysis, [master], { articleRules: [{ articleNumber: "A", hideRelocation: true }] });
+  assert.equal(article.articleNumber, "A");
+  assert.equal(article.pickFrequency, 10);
+  assert.equal(article.isRelocationCandidate, false);
+});

@@ -55,6 +55,7 @@ export class SettingsController {
         importError: req.query.importError ?? null,
         zonesSaved: req.query.zonesSaved === "1",
         pickAreasSaved: req.query.pickAreasSaved === "1",
+        articleRulesSaved: req.query.articleRulesSaved === "1",
         analysisDeleted: req.query.analysisDeleted === "1",
         activeAnalysis,
       });
@@ -83,6 +84,7 @@ export class SettingsController {
         abcAThreshold: decimal(req.body.abcAThreshold) / 100,
         abcBThreshold: decimal(req.body.abcBThreshold) / 100,
       },
+      articleRules: currentSettings.articleRules,
       warehouse: currentSettings.warehouse,
     };
 
@@ -106,6 +108,7 @@ export class SettingsController {
           importError: null,
           zonesSaved: false,
           pickAreasSaved: false,
+          articleRulesSaved: false,
           analysisDeleted: false,
           activeAnalysis: snapshot.run,
         });
@@ -229,6 +232,26 @@ export class SettingsController {
       res.redirect("/settings?pickAreasSaved=1#pick-areas");
     } catch (error) {
       res.redirect(`/settings?importError=${encodeURIComponent(error.message)}#pick-areas`);
+    }
+  }
+
+  static async saveArticleRules(req, res) {
+    try {
+      const values = (value) => value === undefined ? [] : Array.isArray(value) ? value : [value];
+      const articleNumbers = values(req.body.articleNumber);
+      const modes = values(req.body.ruleMode);
+      const current = await SettingsRepository.load();
+      await SettingsRepository.save({
+        ...current,
+        articleRules: articleNumbers.map((articleNumber, index) => ({
+          articleNumber,
+          excludeFromAnalysis: modes[index] === "ANALYSIS" || modes[index] === "BOTH",
+          hideRelocation: modes[index] === "RELOCATION" || modes[index] === "BOTH",
+        })),
+      });
+      res.redirect("/settings?articleRulesSaved=1#article-rules");
+    } catch (error) {
+      res.redirect(`/settings?importError=${encodeURIComponent(error.message)}#article-rules`);
     }
   }
 }

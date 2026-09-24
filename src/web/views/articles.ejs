@@ -10,7 +10,7 @@
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <a class="brand" href="/"><div class="brand-mark">◉</div><div><div class="brand-name">Trend<span>Tornado</span></div><div class="brand-subtitle">lite hit och lite dit</div></div></a>
+      <a class="brand" href="/" aria-label="TrendTornado – översikt"><img class="brand-logo" src="/assets/trendtornado-logo.png" alt="TrendTornado"></a>
       <nav class="sidebar-nav">
         <a class="nav-item" href="/"><span class="nav-icon">⌂</span>Översikt</a>
         <div class="nav-group">
@@ -36,19 +36,20 @@
       <section class="article-search-card card">
         <label class="article-search"><span>⌕</span><input id="articleSearch" type="search" placeholder="Sök artikelnummer eller namn..." autofocus></label>
         <select id="articlePickZoneFilter"><option value="">Alla plockzoner</option><% filters.pickZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select>
+        <select id="articlePhysicalZoneFilter"><option value="">Alla zoner</option><% filters.physicalZones.forEach((zone) => { %><option value="<%= zone %>">Zon <%= zone %></option><% }) %></select>
         <select id="articleTemperatureFilter"><option value="">Alla temperaturer</option><% filters.temperatureZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select>
         <select id="articleClassificationFilter"><option value="">Alla ABC/XYZ-klasser</option><% ['AX','AY','AZ','BX','BY','BZ','CX','CY','CZ'].forEach((value) => { %><option value="<%= value %>"><%= value %></option><% }) %></select>
         <select id="articleDataFilter"><option value="">All datatäckning</option><option value="ANALYZED">Med analys</option><option value="NO_HISTORY">Utan plockhistorik</option><option value="NO_LOCATION">Utan plockplats</option></select>
       </section>
 
       <section class="article-list card">
-        <div class="article-list-heading"><div><h2>Artikelöversikt</h2><p id="articleResultSummary"></p></div><span>Klicka på en artikel för fullständig information</span></div>
+        <div class="article-list-heading"><div><h2>Artikelöversikt</h2><p id="articleResultSummary"></p></div><div class="article-list-actions"><span>Klicka på en rubrik för att sortera</span><button id="exportArticles" type="button">Exportera PDF</button></div></div>
         <div class="article-table-wrap">
           <table class="article-table">
-            <thead><tr><th>Artikel</th><th>Namn</th><th>Klass</th><th>Vikt</th><th>Plockzon</th><th>Plats</th><th>Plock</th><th>Prioritet</th><th></th></tr></thead>
+            <thead><tr><th data-sort="article">Artikel</th><th data-sort="name">Namn</th><th data-sort="classification">Klass</th><th data-sort="weight">Vikt</th><th data-sort="pickZone">Plockzon</th><th data-sort="location">Plats</th><th data-sort="picks">Plock</th><th data-sort="priority">Prioritet</th><th></th></tr></thead>
             <tbody>
               <% articles.forEach((article) => { %>
-                <tr class="article-row" tabindex="0" role="link" data-href="/articles/<%= encodeURIComponent(article.articleNumber) %>" data-search="<%= (article.articleNumber + ' ' + article.name).toLowerCase() %>" data-pick-zone="<%= article.pickZone ?? '' %>" data-temperature="<%= article.temperatureZone ?? '' %>" data-classification="<%= article.classification?.classification ?? '' %>" data-analyzed="<%= article.priorityScore !== null %>" data-has-history="<%= article.pickFrequency > 0 %>" data-has-location="<%= article.currentLocation !== null %>">
+                <tr class="article-row" tabindex="0" role="button" aria-haspopup="dialog" data-article-number="<%= article.articleNumber %>" data-name="<%= article.name.toLowerCase() %>" data-weight="<%= article.weightKg %>" data-location="<%= article.currentLocation ?? '' %>" data-picks="<%= article.pickFrequency %>" data-priority="<%= article.priorityScore ?? -1 %>" data-href="/articles/<%= encodeURIComponent(article.articleNumber) %>" data-search="<%= (article.articleNumber + ' ' + article.name).toLowerCase() %>" data-pick-zone="<%= article.pickZone ?? '' %>" data-physical-zone="<%= article.currentZone || '' %>" data-temperature="<%= article.temperatureZone ?? '' %>" data-classification="<%= article.classification?.classification ?? '' %>" data-analyzed="<%= article.priorityScore !== null %>" data-has-history="<%= article.pickFrequency > 0 %>" data-has-location="<%= article.currentLocation !== null %>">
                   <td><strong><%= article.articleNumber %></strong></td>
                   <td><div class="article-table-name"><%= article.name %></div></td>
                   <td><% if (article.classification) { %><span class="classification-badge class-<%= article.classification.abcClass.toLowerCase() %>"><%= article.classification.classification %></span><% } else { %><span class="missing-value">—</span><% } %></td>
@@ -67,6 +68,12 @@
       </section>
     </main>
   </div>
+  <div id="articleDrawerBackdrop" class="article-drawer-backdrop" hidden></div>
+  <aside id="articleDrawer" class="article-drawer" role="dialog" aria-modal="true" aria-labelledby="articleDrawerTitle" aria-hidden="true">
+    <button id="closeArticleDrawer" class="article-drawer-close" type="button" aria-label="Stäng artikelinformation">×</button>
+    <div id="articleDrawerContent" class="article-drawer-content"></div>
+  </aside>
+  <form id="articleExportForm" method="post" action="/articles/export.pdf" hidden><input id="articleExportNumbers" name="articleNumbers" type="hidden"></form>
   <script src="/js/articles.js"></script>
 </body>
 </html>

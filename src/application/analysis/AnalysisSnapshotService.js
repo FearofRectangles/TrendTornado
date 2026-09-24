@@ -7,6 +7,7 @@ import { WarehouseAnalysisService } from "./WarehouseAnalysisService.js";
 import { Location } from "../../domain/warehouse/location/Location.js";
 import { configureZoneMappings } from "../../domain/warehouse/zone/ZoneRules.js";
 import { DEFAULT_SETTINGS } from "../../config/DefaultSettings.js";
+import { configureExcludedArticles } from "../../domain/analytics/history/PickHistoryRules.js";
 
 const ALGORITHM_VERSION = "1.0";
 let activeCache = null;
@@ -46,6 +47,7 @@ function dateKey(value) {
 async function sourceData(settings = null) {
   const activeSettings = settings ?? await SettingsRepository.load();
   configureZoneMappings(activeSettings.warehouse.zoneMappings);
+  configureExcludedArticles(activeSettings.articleRules.filter((rule) => rule.excludeFromAnalysis).map((rule) => rule.articleNumber));
   const files = await DataSourceRegistry.activePaths();
   const data = await WarehouseDataLoader.load({
     historyPath: files.history,

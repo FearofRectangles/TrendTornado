@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, stat, unlink, writeFile } from "node:fs/promis
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { readCsvFile } from "../csv/CsvReader.js";
+import { readPlacementCsvFile } from "../csv/PlacementCsvReader.js";
 import { DataFiles } from "../../config/DataFiles.js";
 
 export const SourceType = Object.freeze({
@@ -79,6 +80,21 @@ function rowToModel(row) {
 }
 
 async function diagnostics(filePath, type) {
+  if (type === SourceType.PLACEMENTS) {
+    const placement = await readPlacementCsvFile(filePath);
+    return {
+      rowCount: placement.diagnostics.validRows,
+      periodStart: null,
+      periodEnd: null,
+      headers: ["Zon", "Plats", "Varunummer"],
+      missingHeaders: [],
+      placementFormat: placement.diagnostics.format,
+      headerLine: placement.diagnostics.headerLine,
+      rawRows: placement.diagnostics.rawRows,
+      validRows: placement.diagnostics.validRows,
+      ignoredRows: placement.diagnostics.ignoredRows,
+    };
+  }
   const rows = await readCsvFile(filePath, { fromLine: fromLineByType[type] ?? 1 });
   const headers = Object.keys(rows[0] ?? {});
   const missingHeaders = requiredHeaders[type].filter((header) => !headers.includes(header));

@@ -10,6 +10,27 @@ const records = [];
 for (let order = 1; order <= 10; order += 1) {
   for (const articleNumber of ["F1", "F2", "K1"]) records.push({ articleNumber, documentNumber: `UT${order}` });
 }
+
+{
+  const chainProfiles = new Map(["A", "B", "C"].map((articleNumber, index) => [
+    articleNumber,
+    { articleNumber, pickZone: "KOLONIAL", currentPosition: index / 2, priorityScore: 0.8 },
+  ]));
+  const chainRecords = [];
+  for (let occurrence = 0; occurrence < 10; occurrence += 1) {
+    chainRecords.push({ articleNumber: "A", documentNumber: `AB-${occurrence}` });
+    chainRecords.push({ articleNumber: "B", documentNumber: `AB-${occurrence}` });
+    chainRecords.push({ articleNumber: "B", documentNumber: `BC-${occurrence}` });
+    chainRecords.push({ articleNumber: "C", documentNumber: `BC-${occurrence}` });
+  }
+  const chainResult = AffinityClusterEngine.analyze({
+    historyRecords: chainRecords,
+    profilesByArticle: chainProfiles,
+    minimumCommonOrders: 10,
+  });
+  const largest = chainResult.clusters.toSorted((a, b) => b.articleNumbers.length - a.articleNumbers.length)[0];
+  assert.deepEqual(new Set(largest.articleNumbers), new Set(["A", "B", "C"]));
+}
 const result = AffinityClusterEngine.analyze({
   historyRecords: records,
   profilesByArticle: profiles,

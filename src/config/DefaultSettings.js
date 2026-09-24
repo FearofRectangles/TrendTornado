@@ -10,6 +10,11 @@ const defaultPickAreas = [
   { name: "GRÖNSAKER", color: "#4d9b5e" },
   { name: "FRYS", color: "#d74a43" },
 ];
+const defaultArticleRules = ["7629", "7628", "134194", "134193", "99134"].map((articleNumber) => ({
+  articleNumber,
+  excludeFromAnalysis: true,
+  hideRelocation: false,
+}));
 
 export const DEFAULT_SETTINGS = Object.freeze({
   analysis: Object.freeze({
@@ -29,6 +34,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
     abcAThreshold: 0.80,
     abcBThreshold: 0.95,
   }),
+  articleRules: Object.freeze(defaultArticleRules.map(Object.freeze)),
   warehouse: Object.freeze({
     pickAreas: Object.freeze(defaultPickAreas.map(Object.freeze)),
     zoneMappings: Object.freeze(defaultZoneMappings.map(Object.freeze)),
@@ -47,6 +53,7 @@ export function validateSettings(settings) {
   const abcBThreshold = Number(settings?.classification?.abcBThreshold);
   const zoneMappings = settings?.warehouse?.zoneMappings;
   const pickAreas = settings?.warehouse?.pickAreas;
+  const articleRules = settings?.articleRules ?? [];
 
   if (!Number.isFinite(movementThreshold) || movementThreshold < 0 || movementThreshold > 1) {
     throw new Error("Flyttgränsen måste vara mellan 0 och 100 %.");
@@ -89,12 +96,24 @@ export function validateSettings(settings) {
     seenZones.add(physicalZone);
     return { physicalZone, temperatureZone, pickZoneType };
   });
+  if (!Array.isArray(articleRules)) throw new Error("Artikelundantag måste vara en lista.");
+  const seenArticles = new Set();
+  const normalizedArticleRules = articleRules.map((rule) => {
+    const articleNumber = String(rule?.articleNumber ?? "").trim();
+    if (!articleNumber || seenArticles.has(articleNumber)) throw new Error("Varje artikelundantag måste ha ett unikt artikelnummer.");
+    const excludeFromAnalysis = Boolean(rule.excludeFromAnalysis);
+    const hideRelocation = Boolean(rule.hideRelocation);
+    if (!excludeFromAnalysis && !hideRelocation) throw new Error(`Välj minst en regel för artikel ${articleNumber}.`);
+    seenArticles.add(articleNumber);
+    return { articleNumber, excludeFromAnalysis, hideRelocation };
+  });
 
   return {
     analysis: { movementThreshold, frequencyWeight, handlingWeight },
     ergonomics: { lowPreferredKg, lowStronglyRecommendedKg },
     distance: { standardBayWidthMeters, beamThicknessCm },
     classification: { abcAThreshold, abcBThreshold },
+    articleRules: normalizedArticleRules,
     warehouse: { pickAreas: normalizedPickAreas, zoneMappings: normalizedMappings },
   };
 }

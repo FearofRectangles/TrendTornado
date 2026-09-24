@@ -7,9 +7,34 @@ const previousPageButton = document.getElementById("previousPage");
 const nextPageButton = document.getElementById("nextPage");
 const pageIndicator = document.getElementById("pageIndicator");
 const resultSummary = document.getElementById("tableResultSummary");
+const calendarPrevious = document.getElementById("calendarPrevious");
+const calendarNext = document.getElementById("calendarNext");
+const calendarLabel = document.getElementById("calendarMonthLabel");
+const calendarGrid = document.getElementById("calendarGrid");
 
 const pageSize = 10;
 let currentPage = 1;
+
+async function changeCalendarMonth(offset) {
+  if (!calendarLabel || !calendarGrid) return;
+  const [year, month] = calendarLabel.dataset.month.split("-").map(Number);
+  const target = new Date(year, month - 1 + offset, 1);
+  const monthKey = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, "0")}`;
+  calendarPrevious.disabled = true; calendarNext.disabled = true;
+  try {
+    const response = await fetch(`/api/calendar?month=${monthKey}`);
+    if (!response.ok) throw new Error("Kalendern kunde inte hämtas");
+    const calendar = await response.json();
+    calendarLabel.textContent = calendar.monthLabel;
+    calendarLabel.dataset.month = calendar.monthKey;
+    calendarGrid.innerHTML = calendar.days.map((day) => `<div class="calendar-day ${day.hasData ? "has-data" : ""} ${day.outside ? "outside" : ""}" title="${day.recordCount} plockrader">${day.day}</div>`).join("");
+  } finally {
+    calendarPrevious.disabled = false; calendarNext.disabled = false;
+  }
+}
+
+calendarPrevious?.addEventListener("click", () => changeCalendarMonth(-1));
+calendarNext?.addEventListener("click", () => changeCalendarMonth(1));
 
 function detailRowFor(row) {
   return document.getElementById(row.getAttribute("aria-controls"));

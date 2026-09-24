@@ -1,0 +1,6 @@
+textbox1
+20.SA.21 Visa Varuplacering placering (sorterade efter plats)
+
+textbox2,textbox6,Textbox14,Textbox7,textbox4,textbox5,Textbox15,textbox9,textbox21,textbox10,Label,ShelfLabel,KasseIDLabel,PalletShelf,Material,MatDesc,PurchaseOrderNo,CountID,textbox18,ReceiptDate
+Zon,Plats,RepKasseID,Placering,Varunummer,Beskrivning,Inköpsorder,Lager,Status,Mottagande datum,01,010010101,,,50343,Loka Naturell 33 Glas,IN121387645,"29,000",Aktiv,12-07-2026 11:50:27
+Zon,Plats,RepKasseID,Placering,Varunummer,Beskrivning,Inköpsorder,Lager,Status,Mottagande datum,Sys-9001,Sys-9001,,,BOX10180277,BOX10180277,,"1,000",Aktiv,01-12-2025 18:47:21

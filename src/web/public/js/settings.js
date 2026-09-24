@@ -42,6 +42,19 @@ pickAreaRows?.addEventListener("click", (event) => {
   removeButton.closest(".pick-area-row").remove();
 });
 
+const articleRuleRows = document.getElementById("articleRuleRows");
+document.getElementById("addArticleRule")?.addEventListener("click", () => {
+  const row = document.createElement("div");
+  row.className = "article-rule-row";
+  row.innerHTML = `<input name="articleNumber" type="text" placeholder="Artikelnummer" required><select name="ruleMode"><option value="ANALYSIS">Exkludera från analys och statistik</option><option value="RELOCATION">Dölj endast som flyttkandidat</option><option value="BOTH">Båda</option></select><button class="remove-article-rule" type="button" aria-label="Ta bort artikelundantag">×</button>`;
+  articleRuleRows.append(row);
+  row.querySelector("input").focus();
+});
+articleRuleRows?.addEventListener("click", (event) => {
+  const button = event.target.closest(".remove-article-rule");
+  if (button) button.closest(".article-rule-row").remove();
+});
+
 document.querySelectorAll(".source-upload").forEach((upload) => {
   const fileInput = upload.querySelector(".source-file");
   const dateInput = upload.querySelector(".source-effective-date");
