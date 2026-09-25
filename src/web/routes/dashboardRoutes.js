@@ -49,6 +49,7 @@ dashboardRoutes.post("/analyses/delete", SettingsController.deleteAnalysis);
 dashboardRoutes.post("/settings/data-sources/import", express.raw({ type: () => true, limit: "150mb" }), SettingsController.importDataSource);
 dashboardRoutes.post("/settings/data-sources/deactivate", SettingsController.deactivateDataSource);
 dashboardRoutes.post("/settings/data-sources/activate", SettingsController.activateDataSource);
+dashboardRoutes.post("/settings/data-sources/delete", SettingsController.deleteDataSource);
 dashboardRoutes.post("/settings/zones", SettingsController.saveZoneMappings);
 dashboardRoutes.post("/settings/pick-areas", SettingsController.savePickAreas);
 dashboardRoutes.post("/settings/article-rules", SettingsController.saveArticleRules);

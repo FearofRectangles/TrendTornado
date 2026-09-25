@@ -152,7 +152,7 @@ export class DataSourceRegistry {
       [SourceType.ARTICLES, DataFiles.articles],
       [SourceType.LOCATIONS, DataFiles.locations],
       [SourceType.PLACEMENTS, DataFiles.placements],
-    ];
+    ].filter(([, filePath]) => Boolean(filePath));
     const insert = db().prepare(`
       INSERT INTO data_sources (source_type, original_filename, stored_path, imported_at, effective_at, row_count, period_start, period_end, checksum, status, validation_json, is_managed)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, 0)
@@ -183,8 +183,10 @@ export class DataSourceRegistry {
   }
 
   static async detectedZones() {
-    const files = await this.activePaths();
-    const rows = await readCsvFile(files.locations);
+    await this.ensureBootstrapped();
+    const locationSource = db().prepare("SELECT stored_path FROM data_sources WHERE source_type = 'LOCATIONS' AND status = 'ACTIVE' ORDER BY imported_at DESC, id DESC LIMIT 1").get();
+    if (!locationSource) return [];
+    const rows = await readCsvFile(locationSource.stored_path);
     const zones = new Map();
     for (const row of rows) {
       const physicalZone = String(row.Zone ?? row.Lokation?.slice(0, 2) ?? "").padStart(2, "0");
@@ -264,5 +266,30 @@ export class DataSourceRegistry {
       connection.exec("ROLLBACK");
       throw error;
     }
+  }
+
+  static async delete(id) {
+    await this.ensureBootstrapped();
+    const source = db().prepare("SELECT * FROM data_sources WHERE id = ? AND status != 'DELETED'").get(Number(id));
+    if (!source) throw new Error("Datakällan finns inte eller är redan borttagen.");
+    if (!source.is_managed) throw new Error("Projektets ursprungliga systemfiler kan inte tas bort härifrån.");
+    if (source.source_type !== SourceType.HISTORY && source.status === "ACTIVE") {
+      throw new Error("En aktiv masterdatafil måste ersättas innan den kan tas bort.");
+    }
+    if (source.source_type === SourceType.HISTORY && source.status === "ACTIVE") {
+      const activeHistoryCount = db().prepare("SELECT COUNT(*) AS count FROM data_sources WHERE source_type = 'HISTORY' AND status = 'ACTIVE'").get().count;
+      if (activeHistoryCount <= 1) throw new Error("Den sista aktiva historikfilen kan inte tas bort.");
+    }
+
+    const storedPath = path.resolve(source.stored_path);
+    const relativePath = path.relative(uploadRoot, storedPath);
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+      throw new Error("Filen ligger utanför TrendTornados uppladdningsmapp och kan inte tas bort.");
+    }
+
+    await unlink(storedPath).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+    });
+    db().prepare("UPDATE data_sources SET status = 'DELETED' WHERE id = ?").run(Number(id));
   }
 }

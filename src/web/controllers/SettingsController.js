@@ -52,6 +52,7 @@ export class SettingsController {
         analysisCreated: req.query.analysisCreated === "1",
         dataImported: req.query.dataImported === "1",
         dataSourceChanged: req.query.dataSourceChanged === "1",
+        dataSourceDeleted: req.query.dataSourceDeleted === "1",
         importError: req.query.importError ?? null,
         zonesSaved: req.query.zonesSaved === "1",
         pickAreasSaved: req.query.pickAreasSaved === "1",
@@ -105,6 +106,7 @@ export class SettingsController {
           analysisCreated: false,
           dataImported: false,
           dataSourceChanged: false,
+          dataSourceDeleted: false,
           importError: null,
           zonesSaved: false,
           pickAreasSaved: false,
@@ -180,6 +182,15 @@ export class SettingsController {
     try {
       await DataSourceRegistry.activate(req.body.sourceId);
       res.redirect("/settings?dataSourceChanged=1#data-sources");
+    } catch (error) {
+      res.redirect(`/settings?importError=${encodeURIComponent(error.message)}#data-sources`);
+    }
+  }
+
+  static async deleteDataSource(req, res) {
+    try {
+      await DataSourceRegistry.delete(req.body.sourceId);
+      res.redirect("/settings?dataSourceDeleted=1#data-sources");
     } catch (error) {
       res.redirect(`/settings?importError=${encodeURIComponent(error.message)}#data-sources`);
     }
