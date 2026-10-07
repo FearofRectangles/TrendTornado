@@ -23,41 +23,38 @@ export function attachPickSequence(
 
   return analyzedArticles.map(
     (article) => {
+      const positionLocation = (location) => {
+        if (!location) return null;
+
+        const sequence = sequenceByLocationCode.get(location.locationCode);
+
+        if (!sequence) {
+          return {
+            location,
+            pickSequence: null,
+            totalPickLocations: null,
+            relativePickPosition: null,
+          };
+        }
+
+        return {
+          location,
+          pickSequence: sequence.pickSequence,
+          totalPickLocations: sequence.totalPickLocations,
+          relativePickPosition: sequence.relativePickPosition,
+        };
+      };
+
       const positionedPickLocations =
         article.pickLocations.map(
-          (location) => {
-            const sequence =
-              sequenceByLocationCode.get(
-                location.locationCode,
-              );
-
-            if (!sequence) {
-              return {
-                location,
-                pickSequence: null,
-                totalPickLocations: null,
-                relativePickPosition: null,
-              };
-            }
-
-            return {
-              location,
-
-              pickSequence:
-                sequence.pickSequence,
-
-              totalPickLocations:
-                sequence.totalPickLocations,
-
-              relativePickPosition:
-                sequence.relativePickPosition,
-            };
-          },
+          positionLocation,
         );
 
       return {
         ...article,
         positionedPickLocations,
+        simulationPositionedPickLocation:
+          positionLocation(article.simulationPickLocation),
       };
     },
   );

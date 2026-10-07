@@ -3,7 +3,7 @@ const pickAreas = JSON.parse(document.getElementById("pickAreaData")?.textConten
 const pickAreaByName = new Map(pickAreas.map((area) => [area.name, area]));
 const byId = new Map(clusters.map((item) => [item.id, item]));
 let rows = [...document.querySelectorAll(".cluster-row")];
-const tabs = [...document.querySelectorAll("[data-zone]")];
+const tabs = [...document.querySelectorAll(".department-tabs button[data-zone]")];
 const search = document.getElementById("affinitySearch");
 const opportunity = document.getElementById("opportunityFilter");
 const spread = document.getElementById("spreadFilter");
@@ -54,7 +54,14 @@ function openDrawer(id) {
     <div class="drawer-article-head"><span>Artikel</span><span>Namn</span><span>ABC/XYZ</span><span>Position i flödet</span></div>
     <div class="drawer-articles core-articles">${item.articles.map((article) => `<a class="drawer-article" href="/articles/${encodeURIComponent(article.articleNumber)}"><strong>${escape(article.articleNumber)}</strong><span>${escape(article.name)}</span><b>${escape(article.classification?.classification ?? "—")}</b><small><strong>${escape(locationLabel(article))}</strong><span>${format.format(article.currentPosition * 100)} % genom området</span></small></a>`).join("")}</div>
     ${item.associatedArticles.length > 0 ? `<h3 class="member-heading associated-heading">Associerade artiklar <span>${item.associatedArticles.length}</span></h3><div class="drawer-article-head"><span>Artikel</span><span>Namn</span><span>ABC/XYZ</span><span>Position i flödet</span></div><div class="drawer-articles associated-articles">${item.associatedArticles.map((article) => `<a class="drawer-article" href="/articles/${encodeURIComponent(article.articleNumber)}"><strong>${escape(article.articleNumber)}</strong><span>${escape(article.name)}</span><b>${escape(article.classification?.classification ?? "—")}</b><small><strong>${escape(locationLabel(article))}</strong><span>${format.format(article.currentPosition * 100)} % genom området</span></small></a>`).join("")}</div>` : ""}
-    <div class="drawer-method"><strong>Starkaste relation:</strong> ${escape(item.strongestRelation.leftArticleNumber)} ↔ ${escape(item.strongestRelation.rightArticleNumber)} · ${format.format(item.strongestRelation.affinity * 100)} % affinity · ${format.format(item.strongestRelation.commonOrderCount)} gemensamma order. Förekomst betyder unika order där minst två artiklar i klustret samplockades.</div>`;
+    <div class="drawer-method">
+      <strong>Starkaste artikelpar</strong>
+      <p><b>${escape(item.strongestRelation.leftArticleNumber)} + ${escape(item.strongestRelation.rightArticleNumber)}</b> samplockades på ${format.format(item.strongestRelation.commonOrderCount)} order.</p>
+      <span>Det motsvarar ${format.format(item.strongestRelation.affinity * 100)} % av de ${format.format(item.strongestRelation.referenceOrderCount)} order där den mindre frekventa artikeln förekom.</span>
+      <hr>
+      <strong>Klusterförekomst</strong>
+      <span>Antal unika order där minst två artiklar från klustret förekom tillsammans.</span>
+    </div>`;
   drawer.classList.add("is-open"); drawer.setAttribute("aria-hidden", "false"); backdrop.hidden = false;
   requestAnimationFrame(() => backdrop.classList.add("is-visible"));
 }

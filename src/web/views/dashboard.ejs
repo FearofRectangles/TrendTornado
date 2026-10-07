@@ -267,7 +267,7 @@
               <div class="kpi-value">
 
                 <%= (
-                  simulation.snapshotCoverage *
+                  simulation.flowCoverage *
                   100
                 ).toFixed(1) %>
 
@@ -525,8 +525,8 @@
               </h2>
 
               <p>
-                Artiklar som bör flyttas tidigare
-                eller senare i plockslingan.
+                De viktigaste flyttarna först, rangordnade
+                efter samma prioritetspoäng som i Flyttare.
               </p>
 
             </div>
@@ -614,7 +614,11 @@
                     #
                   </th>
 
-                  <th>
+                  <th data-sort="utility" aria-sort="descending" title="Prioritet väger samman aktivitet, gap, flödespåverkan, genomförbarhet, datakvalitet och ergonomi.">
+                    Prio
+                  </th>
+
+                  <th data-sort="article">
                     Artikel
                   </th>
 
@@ -637,7 +641,7 @@
                     Rekommenderad plats
                   </th>
 
-                  <th>
+                  <th data-sort="gap">
                     Gap
                   </th>
 
@@ -734,6 +738,10 @@
                         .ergonomicRecommendation
                     %>"
 
+                    data-utility="<%= recommendation.utility.score %>"
+
+                    data-gap="<%= Math.abs(recommendation.placementGap * 100) %>"
+
                     data-search="<%=
                       (
                         recommendation
@@ -750,6 +758,13 @@
 
                       <%= index + 1 %>
 
+                    </td>
+
+                    <td>
+                      <span class="dashboard-utility-score">
+                        <strong><%= recommendation.utility.score %></strong>
+                        <small><%= recommendation.utility.label %></small>
+                      </span>
                     </td>
 
 
@@ -927,7 +942,7 @@
                     aria-hidden="true"
                   >
 
-                    <td colspan="10">
+                    <td colspan="11">
 
                       <div class="inline-details-animation">
 

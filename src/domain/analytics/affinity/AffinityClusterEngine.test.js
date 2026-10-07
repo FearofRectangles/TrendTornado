@@ -40,6 +40,9 @@ const result = AffinityClusterEngine.analyze({
 assert.equal(result.relations.length, 1);
 assert.equal(result.relations[0].pickZone, "FRYS");
 assert.equal(result.relations[0].estimatedDistanceMeters, 80);
+assert.equal(result.relations[0].leftOrderCount, 10);
+assert.equal(result.relations[0].rightOrderCount, 10);
+assert.equal(result.relations[0].referenceOrderCount, 10);
 assert.deepEqual(result.clusters[0].articleNumbers.sort(), ["F1", "F2"]);
 assert.equal(result.clusters[0].occurrenceCount, 10);
 console.log("AffinityClusterEngine tests passed");

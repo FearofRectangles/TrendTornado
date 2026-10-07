@@ -389,7 +389,7 @@ const periodEnd =
     // Simulation coverage
     // --------------------------------------------------
 
-    const simulationCoverage =
+    const flowSimulationCoverage =
       simulationDiagnostics.totalRecords ===
       0
         ? 0
@@ -397,6 +397,18 @@ const periodEnd =
             .includedRecords /
           simulationDiagnostics
             .totalRecords;
+
+    const completeDocumentCoverage =
+      simulationDiagnostics.totalDocuments === 0
+        ? 0
+        : simulationDiagnostics.fullyCoveredDocuments /
+          simulationDiagnostics.totalDocuments;
+
+    const simulatedWeightCoverage =
+      simulationDiagnostics.includedRecords === 0
+        ? 0
+        : simulationDiagnostics.includedWeightRecords /
+          simulationDiagnostics.includedRecords;
 
 
     // --------------------------------------------------
@@ -720,6 +732,26 @@ const periodEnd =
           ? historyRecordsWithValidWeight / historyRecords.length
           : 0,
       },
+      flow: {
+        records: simulationDiagnostics.totalRecords,
+        includedRecords: simulationDiagnostics.includedRecords,
+        coverage: flowSimulationCoverage,
+        documents: simulationDiagnostics.totalDocuments,
+        completeDocuments: simulationDiagnostics.fullyCoveredDocuments,
+        completeDocumentCoverage,
+      },
+      simulatedWeight: {
+        records: simulationDiagnostics.includedRecords,
+        validRecords: simulationDiagnostics.includedWeightRecords,
+        coverage: simulatedWeightCoverage,
+      },
+      relocation: {
+        analyzedArticles: positionedArticles.length,
+        eligibleArticles: placementEvaluations.length,
+        coverage: positionedArticles.length > 0
+          ? placementEvaluations.length / positionedArticles.length
+          : 0,
+      },
     };
 
 
@@ -812,7 +844,16 @@ const periodEnd =
         movementThreshold,
 
         coverage:
-          simulationCoverage,
+          flowSimulationCoverage,
+
+        coverageDetails: {
+          flow: flowSimulationCoverage,
+          completeDocuments: completeDocumentCoverage,
+          weight: simulatedWeightCoverage,
+          relocation: positionedArticles.length > 0
+            ? placementEvaluations.length / positionedArticles.length
+            : 0,
+        },
 
         diagnostics:
           simulationDiagnostics,

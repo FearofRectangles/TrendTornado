@@ -109,3 +109,28 @@ test("keeps the placement snapshot ahead of a newer WMS observation", () => {
   assert.equal(result[0].pickLocations[0], snapshotLocation);
   assert.equal(result[0].placementEvidence.source, "PLACEMENT_SNAPSHOT");
 });
+
+test("selects the dominant recent WMS location for simulation when a snapshot has multiple locations", () => {
+  const first = { locationCode: "110010101", purpose: "PICK", isPickLocation: true };
+  const second = { locationCode: "110020101", purpose: "PICK", isPickLocation: true };
+  const result = attachPickPlacements(
+    [{ articleNumber: "43454" }],
+    [
+      { article: { articleNumber: "43454" }, location: first },
+      { article: { articleNumber: "43454" }, location: second },
+    ],
+    {
+      locations: [first, second],
+      movementRecords: [
+        { articleNumber: "43454", sourceLocation: first.locationCode, occurredAt: new Date("2025-08-08T08:00:00") },
+        { articleNumber: "43454", sourceLocation: second.locationCode, occurredAt: new Date("2025-08-09T08:00:00") },
+        { articleNumber: "43454", sourceLocation: second.locationCode, occurredAt: new Date("2025-08-10T08:00:00") },
+      ],
+    },
+  );
+
+  assert.equal(result[0].pickLocations.length, 2);
+  assert.equal(result[0].simulationPickLocation, second);
+  assert.equal(result[0].simulationPlacementEvidence.strategy, "RECENT_WMS_DOMINANT");
+  assert.equal(result[0].simulationPlacementEvidence.observationCount, 3);
+});

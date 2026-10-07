@@ -8,6 +8,22 @@ function buildBins(values, definitions) {
 }
 
 export function buildAnalysisViewModel(analysis) {
+  const sourceCoverage = analysis.dataCoverage ?? {};
+  const simulationDiagnostics = analysis.simulation.diagnostics ?? {};
+  const totalSimulationRecords = simulationDiagnostics.totalRecords ?? 0;
+  const includedSimulationRecords = simulationDiagnostics.includedRecords ?? 0;
+  const totalSimulationDocuments = simulationDiagnostics.totalDocuments ?? 0;
+  const completeSimulationDocuments = simulationDiagnostics.fullyCoveredDocuments ?? 0;
+  const includedWeightRecords = simulationDiagnostics.includedWeightRecords ?? 0;
+  const derivedFlowCoverage = totalSimulationRecords > 0
+    ? includedSimulationRecords / totalSimulationRecords
+    : 0;
+  const derivedDocumentCoverage = totalSimulationDocuments > 0
+    ? completeSimulationDocuments / totalSimulationDocuments
+    : 0;
+  const derivedWeightCoverage = includedSimulationRecords > 0
+    ? includedWeightRecords / includedSimulationRecords
+    : 0;
   const articlesByNumber = new Map(
     analysis.articles.positioned.map((article) => [article.articleNumber, article]),
   );
@@ -109,11 +125,35 @@ export function buildAnalysisViewModel(analysis) {
       comparison: analysis.simulation.comparison,
       diagnostics: analysis.simulation.diagnostics,
       coverage: analysis.simulation.coverage,
+      coverageDetails: analysis.simulation.coverageDetails ?? {
+        flow: analysis.simulation.coverage ?? 0,
+        completeDocuments: 0,
+        weight: 0,
+        relocation: 0,
+      },
       improvedWeightPairs: optimized.correctlyOrderedPairs - baseline.correctlyOrderedPairs,
-      dataCoverage: analysis.dataCoverage ?? {
-        placement: { snapshotCoverage: 0, resolvedCoverage: 0, snapshotArticles: 0, wmsObservedArticles: 0, unknownArticles: 0 },
-        movementLocation: { coverage: 0, resolvedRecords: 0, records: 0 },
-        weight: { coverage: 0, validRecords: 0, records: 0 },
+      dataCoverage: {
+        placement: sourceCoverage.placement ?? { snapshotCoverage: 0, resolvedCoverage: 0, snapshotArticles: 0, wmsObservedArticles: 0, unknownArticles: 0 },
+        movementLocation: sourceCoverage.movementLocation ?? { coverage: 0, resolvedRecords: 0, records: 0 },
+        weight: sourceCoverage.weight ?? { coverage: 0, validRecords: 0, records: 0 },
+        flow: sourceCoverage.flow ?? {
+          coverage: analysis.simulation.coverage ?? derivedFlowCoverage,
+          includedRecords: includedSimulationRecords,
+          records: totalSimulationRecords,
+          completeDocumentCoverage: derivedDocumentCoverage,
+          completeDocuments: completeSimulationDocuments,
+          documents: totalSimulationDocuments,
+        },
+        simulatedWeight: sourceCoverage.simulatedWeight ?? {
+          coverage: derivedWeightCoverage,
+          validRecords: includedWeightRecords,
+          records: includedSimulationRecords,
+        },
+        relocation: sourceCoverage.relocation ?? {
+          coverage: 0,
+          eligibleArticles: analysis.evaluations.all.length,
+          analyzedArticles: analysis.articles.positioned.length,
+        },
       },
     },
     classification: {

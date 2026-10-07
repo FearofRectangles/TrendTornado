@@ -144,7 +144,7 @@ export class DashboardController {
         // Coverage
         // ----------------------------------------------
 
-        snapshotCoverage:
+        flowCoverage:
           simulation?.coverage ?? 0,
 
         historicalRecords:

@@ -83,6 +83,9 @@ export class AffinityClusterEngine {
       return {
         leftArticleNumber,
         rightArticleNumber,
+        leftOrderCount: leftOrders,
+        rightOrderCount: rightOrders,
+        referenceOrderCount: Math.min(leftOrders, rightOrders),
         pickZone: left.pickZone,
         commonOrderCount,
         commonOrderDocuments,

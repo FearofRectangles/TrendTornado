@@ -43,8 +43,9 @@ export class OrderSimulationEngine {
           ...pick,
 
           handledWeight:
-            pick.weightKg *
-            pick.pickedQuantity,
+            Number.isFinite(pick.weightKg)
+              ? pick.weightKg * pick.pickedQuantity
+              : null,
         };
       });
 
@@ -110,6 +111,13 @@ export class OrderSimulationEngine {
 
         const later =
           orderedPicks[j];
+
+        if (
+          earlier.handledWeight === null ||
+          later.handledWeight === null
+        ) {
+          continue;
+        }
 
         if (
           earlier.handledWeight ===
@@ -199,10 +207,9 @@ export class OrderSimulationEngine {
     }
 
     if (
-      !Number.isFinite(
-        pick.weightKg,
-      ) ||
-      pick.weightKg < 0
+      pick.weightKg !== null &&
+      pick.weightKg !== undefined &&
+      (!Number.isFinite(pick.weightKg) || pick.weightKg < 0)
     ) {
       throw new Error(
         "Weight must be a non-negative number.",

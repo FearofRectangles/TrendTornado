@@ -9,7 +9,7 @@ import { configureZoneMappings } from "../../domain/warehouse/zone/ZoneRules.js"
 import { DEFAULT_SETTINGS } from "../../config/DefaultSettings.js";
 import { configureExcludedArticles } from "../../domain/analytics/history/PickHistoryRules.js";
 
-const ALGORITHM_VERSION = "1.4";
+const ALGORITHM_VERSION = "1.5";
 let activeCache = null;
 const derivedCache = new Map();
 

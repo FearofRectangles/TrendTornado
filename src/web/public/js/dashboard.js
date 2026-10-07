@@ -1,4 +1,4 @@
-const rows = [...document.querySelectorAll(".recommendation-row")];
+let rows = [...document.querySelectorAll(".recommendation-row")];
 const zoneFilter = document.getElementById("zoneFilter");
 const directionFilter = document.getElementById("directionFilter");
 const ergonomicFilter = document.getElementById("ergonomicFilter");
@@ -11,9 +11,13 @@ const calendarPrevious = document.getElementById("calendarPrevious");
 const calendarNext = document.getElementById("calendarNext");
 const calendarLabel = document.getElementById("calendarMonthLabel");
 const calendarGrid = document.getElementById("calendarGrid");
+const recommendationTableBody = document.querySelector(".relocation-table tbody");
+const sortableHeaders = [...document.querySelectorAll(".relocation-table th[data-sort]")];
 
 const pageSize = 10;
 let currentPage = 1;
+let sortKey = "utility";
+let sortDirection = "desc";
 
 async function changeCalendarMonth(offset) {
   if (!calendarLabel || !calendarGrid) return;
@@ -70,6 +74,27 @@ function getFilteredRows() {
 }
 
 function renderTable() {
+  const getSortValue = (row) => ({
+    utility: Number(row.dataset.utility),
+    gap: Number(row.dataset.gap),
+    article: row.dataset.articleNumber,
+  })[sortKey];
+  rows = rows.toSorted((left, right) => {
+    const a = getSortValue(left);
+    const b = getSortValue(right);
+    const comparison = typeof a === "number"
+      ? a - b
+      : String(a ?? "").localeCompare(String(b ?? ""), "sv", { numeric: true });
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+  rows.forEach((row) => recommendationTableBody.append(row, detailRowFor(row)));
+  sortableHeaders.forEach((header) => header.setAttribute(
+    "aria-sort",
+    header.dataset.sort === sortKey
+      ? (sortDirection === "asc" ? "ascending" : "descending")
+      : "none",
+  ));
+
   const filteredRows = getFilteredRows();
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   currentPage = Math.min(currentPage, totalPages);
@@ -109,6 +134,14 @@ function resetToFirstPage() {
   filter.addEventListener("change", resetToFirstPage);
 });
 searchInput.addEventListener("input", resetToFirstPage);
+
+sortableHeaders.forEach((header) => header.addEventListener("click", () => {
+  sortDirection = sortKey === header.dataset.sort && sortDirection === "asc"
+    ? "desc"
+    : "asc";
+  sortKey = header.dataset.sort;
+  resetToFirstPage();
+}));
 
 previousPageButton.addEventListener("click", () => {
   if (currentPage > 1) {

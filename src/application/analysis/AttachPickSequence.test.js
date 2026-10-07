@@ -81,3 +81,14 @@ test("handles missing sequence information", () => {
     null,
   );
 });
+
+test("attaches separate sequence data for the simulation location", () => {
+  const location = { locationCode: "200180303" };
+  const [result] = attachPickSequence(
+    [{ articleNumber: "43454", pickLocations: [location, { locationCode: "200190303" }], simulationPickLocation: location }],
+    [{ location, pickSequence: 135, totalPickLocations: 500, relativePickPosition: 0.2685 }],
+  );
+
+  assert.equal(result.positionedPickLocations.length, 2);
+  assert.equal(result.simulationPositionedPickLocation.relativePickPosition, 0.2685);
+});

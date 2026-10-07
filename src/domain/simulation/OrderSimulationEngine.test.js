@@ -265,6 +265,22 @@ test("sorts picks by relative position before evaluating", () => {
 });
 
 
+test("keeps picks with unknown weight in span but excludes their weight pairs", () => {
+  const result = OrderSimulationEngine.simulate({
+    documentNumber: "UT100",
+    picks: [
+      { articleNumber: "A", pickedQuantity: 1, weightKg: 10, relativePosition: 0.10 },
+      { articleNumber: "B", pickedQuantity: 1, weightKg: null, relativePosition: 0.50 },
+      { articleNumber: "C", pickedQuantity: 1, weightKg: 2, relativePosition: 0.90 },
+    ],
+  });
+
+  assert.equal(result.pickSpan, 0.8);
+  assert.equal(result.comparablePairs, 1);
+  assert.equal(result.correctlyOrderedPairs, 1);
+});
+
+
 test("rejects an empty pick list", () => {
   assert.throws(
     () =>

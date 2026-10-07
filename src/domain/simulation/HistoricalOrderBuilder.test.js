@@ -441,7 +441,7 @@ test(
 
 
 test(
-  "reports invalid article weight in diagnostics",
+  "keeps a positioned pick in route simulation when its weight is invalid",
   () => {
     const historyRecords = [
       createHistoryRecord({
@@ -481,7 +481,7 @@ test(
 
     assert.equal(
       result.orders.length,
-      0,
+      1,
     );
 
     assert.equal(
@@ -490,10 +490,13 @@ test(
       1,
     );
 
+    assert.equal(result.diagnostics.includedWeightRecords, 0);
+    assert.equal(result.orders[0].picks[0].weightKg, null);
+
     assert.equal(
       result.diagnostics
         .excludedRecords,
-      1,
+      0,
     );
   },
 );
@@ -996,7 +999,7 @@ test(
 );
 
 test(
-  "excludes the entire document when one historical pick cannot be simulated",
+  "keeps the complete route when one historical pick has no usable weight",
   () => {
     const historyRecords = [
       createHistoryRecord({
@@ -1090,37 +1093,35 @@ test(
     assert.equal(
       result.diagnostics
         .validRecords,
-      2,
+      3,
     );
 
     assert.equal(
       result.diagnostics
         .includedRecords,
-      0,
+      3,
     );
 
     assert.equal(
       result.diagnostics
         .excludedRecords,
-      1,
+      0,
     );
 
     assert.equal(
       result.diagnostics
         .recordsExcludedByDocumentFilter,
-      2,
+      0,
     );
 
     assert.equal(
       result.diagnostics
         .partiallyCoveredDocuments,
-      1,
+      0,
     );
 
-    assert.deepEqual(
-      result.orders,
-      [],
-    );
+    assert.equal(result.orders.length, 1);
+    assert.equal(result.diagnostics.includedWeightRecords, 2);
   },
 );
 

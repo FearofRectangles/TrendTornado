@@ -66,9 +66,15 @@ export class HistoricalOrderBuilder {
 
       invalidWeight: 0,
 
+      weightEligibleRecords: 0,
+
+      includedWeightRecords: 0,
+
       noPickLocation: 0,
 
       multiplePickLocations: 0,
+
+      resolvedMultiplePickLocations: 0,
 
       noSequencePosition: 0,
 
@@ -134,6 +140,8 @@ export class HistoricalOrderBuilder {
             validRecords: 0,
 
             validPicks: [],
+
+            validWeightRecords: 0,
           },
         );
       }
@@ -170,7 +178,8 @@ export class HistoricalOrderBuilder {
 
 
       // ------------------------------------------------
-      // Valid article weight
+      // Weight is optional for route simulation. Missing weight
+      // removes only weight-order comparisons, not the pick itself.
       // ------------------------------------------------
 
       if (
@@ -181,11 +190,8 @@ export class HistoricalOrderBuilder {
       ) {
         diagnostics
           .invalidWeight++;
-
-        diagnostics
-          .excludedRecords++;
-
-        continue;
+      } else {
+        diagnostics.weightEligibleRecords++;
       }
 
 
@@ -215,10 +221,15 @@ export class HistoricalOrderBuilder {
       }
 
 
-      if (
-        positionedPickLocations
-          .length > 1
-      ) {
+      const simulationPositioned =
+        article.simulationPositionedPickLocation ??
+        (positionedPickLocations.length === 1 ? positionedPickLocations[0] : null);
+
+      if (positionedPickLocations.length > 1 && simulationPositioned) {
+        diagnostics.resolvedMultiplePickLocations++;
+      }
+
+      if (!simulationPositioned) {
         diagnostics
           .multiplePickLocations++;
 
@@ -229,8 +240,7 @@ export class HistoricalOrderBuilder {
       }
 
 
-      const positioned =
-        positionedPickLocations[0];
+      const positioned = simulationPositioned;
 
 
       // ------------------------------------------------
@@ -290,7 +300,9 @@ export class HistoricalOrderBuilder {
           record.pickedQuantity,
 
         weightKg:
-          article.weightKg,
+          Number.isFinite(article.weightKg) && article.weightKg >= 0
+            ? article.weightKg
+            : null,
 
         relativePosition:
           positioned
@@ -301,6 +313,10 @@ export class HistoricalOrderBuilder {
 
 
       document.validRecords++;
+
+      if (pick.weightKg !== null) {
+        document.validWeightRecords++;
+      }
 
       document.validPicks.push(
         pick,
@@ -332,6 +348,7 @@ export class HistoricalOrderBuilder {
         totalRecords,
         validRecords,
         validPicks,
+        validWeightRecords,
       } = document;
 
 
@@ -383,6 +400,9 @@ export class HistoricalOrderBuilder {
       diagnostics
         .includedRecords +=
           validRecords;
+
+      diagnostics.includedWeightRecords +=
+        validWeightRecords;
 
 
       // ------------------------------------------------
