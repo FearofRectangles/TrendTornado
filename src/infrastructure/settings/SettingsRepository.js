@@ -1,25 +1,35 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { DEFAULT_SETTINGS, validateSettings } from "../../config/DefaultSettings.js";
+import { OfficeContext } from "../../config/OfficeContext.js";
 
-const settingsPath = path.resolve("data", "config", "settings.json");
+const settingsPath = path.join(OfficeContext.dataRoot, "settings.json");
+const legacySettingsPath = path.resolve("data", "config", "settings.json");
 
 export class SettingsRepository {
   static async load() {
-    try {
-      const stored = JSON.parse(await readFile(settingsPath, "utf8"));
-      return validateSettings({
-        analysis: { ...DEFAULT_SETTINGS.analysis, ...stored.analysis },
-        ergonomics: { ...DEFAULT_SETTINGS.ergonomics, ...stored.ergonomics },
-        distance: { ...DEFAULT_SETTINGS.distance, ...stored.distance },
-        classification: { ...DEFAULT_SETTINGS.classification, ...stored.classification },
-        articleRules: stored.articleRules ?? DEFAULT_SETTINGS.articleRules,
-        warehouse: { ...DEFAULT_SETTINGS.warehouse, ...stored.warehouse },
-      });
-    } catch (error) {
-      if (error.code === "ENOENT") return validateSettings(DEFAULT_SETTINGS);
-      throw error;
+    const candidatePaths = [settingsPath, ...(OfficeContext.id === "KALMAR" ? [legacySettingsPath] : [])];
+    for (const candidatePath of candidatePaths) {
+      try {
+        const stored = JSON.parse(await readFile(candidatePath, "utf8"));
+        const validated = validateSettings({
+          analysis: { ...DEFAULT_SETTINGS.analysis, ...stored.analysis },
+          ergonomics: { ...DEFAULT_SETTINGS.ergonomics, ...stored.ergonomics },
+          distance: { ...DEFAULT_SETTINGS.distance, ...stored.distance },
+          classification: { ...DEFAULT_SETTINGS.classification, ...stored.classification },
+          articleRules: stored.articleRules ?? DEFAULT_SETTINGS.articleRules,
+          warehouse: { ...DEFAULT_SETTINGS.warehouse, ...stored.warehouse },
+        });
+        if (candidatePath === legacySettingsPath) {
+          await mkdir(path.dirname(settingsPath), { recursive: true });
+          await writeFile(settingsPath, `${JSON.stringify(validated, null, 2)}\n`, "utf8");
+        }
+        return validated;
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
     }
+    return validateSettings(DEFAULT_SETTINGS);
   }
 
   static async save(settings) {

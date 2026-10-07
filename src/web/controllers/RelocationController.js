@@ -2,6 +2,7 @@ import { AnalysisSnapshotService } from "../../application/analysis/AnalysisSnap
 import { RelocationPdfReport } from "../../infrastructure/reports/RelocationPdfReport.js";
 import {
   buildRelocationViewModel,
+  buildRelocationBundleViewModel,
 } from "../viewmodels/buildRelocationViewModel.js";
 import { DEFAULT_SETTINGS } from "../../config/DefaultSettings.js";
 import { SettingsRepository } from "../../infrastructure/settings/SettingsRepository.js";
@@ -22,6 +23,19 @@ export class RelocationController {
         configuredPickAreas.map((area) => [area.name, area.color]),
       );
       const recommendations = AnalysisSnapshotService.derived(activeAnalysis.id, "relocations", () => buildRelocationViewModel(analysis, activeAnalysis.settings));
+      const bundles = AnalysisSnapshotService.derived(activeAnalysis.id, "relocation-bundles", () => buildRelocationBundleViewModel(analysis, recommendations));
+      const bundleByArticle = new Map();
+      bundles.forEach((bundle) => bundle.members.forEach((member) => bundleByArticle.set(String(member.articleNumber), bundle)));
+      recommendations.forEach((item) => {
+        const bundle = bundleByArticle.get(String(item.articleNumber));
+        item.bundle = bundle ? {
+          id: bundle.id,
+          articleNumbers: bundle.articleNumbers,
+          partnerArticleNumbers: bundle.articleNumbers.filter((articleNumber) => articleNumber !== String(item.articleNumber)),
+          minutesSavedPerWeek: bundle.minutesSavedPerWeek,
+          score: bundle.score,
+        } : null;
+      });
       placementOptionsByArticle.clear();
       recommendations.forEach((item) => {
         placementOptionsByArticle.set(String(item.articleNumber), item.placementOptions ?? null);
@@ -37,11 +51,19 @@ export class RelocationController {
         : activeView === "later"
           ? later
           : recommendations;
+      const visibleArticleNumbers = new Set(visibleRecommendations.map((item) => String(item.articleNumber)));
+      const visibleBundles = bundles.filter((bundle) => activeView === "all" || bundle.articleNumbers.some((articleNumber) => visibleArticleNumbers.has(String(articleNumber))));
+      const bundledArticleNumbers = new Set(visibleBundles.flatMap((bundle) => bundle.articleNumbers.map(String)));
+      const workItems = [
+        ...visibleRecommendations.filter((item) => !bundledArticleNumbers.has(String(item.articleNumber))).map((item) => ({ type: "SINGLE", utility: item.utility.score, item })),
+        ...visibleBundles.map((bundle) => ({ type: "BUNDLE", utility: bundle.score, bundle })),
+      ].toSorted((left, right) => right.utility - left.utility);
       const drawerRecommendations = visibleRecommendations.map((item) => ({
         articleNumber: item.articleNumber,
         name: item.name,
         currentZone: item.currentZone,
         currentLocation: item.currentLocation,
+        placementEvidence: item.placementEvidence,
         currentSection: item.currentSection,
         currentFloorHeightCm: item.currentFloorHeightCm,
         currentPosition: item.currentPosition,
@@ -61,6 +83,11 @@ export class RelocationController {
           ? { classification: item.classification.classification }
           : null,
         utility: item.utility,
+        bundle: item.bundle,
+      }));
+      const drawerBundles = visibleBundles.map((bundle) => ({
+        ...bundle,
+        members: bundle.members.map(({ placementOptions, bundle: ignoredBundle, ...member }) => member),
       }));
 
       const unique = (values) => [...new Set(values.map(String))]
@@ -77,9 +104,14 @@ export class RelocationController {
           earlier: earlier.length,
           later: later.length,
           ergonomic: ergonomic.length,
+          bundles: bundles.length,
         },
+        bundles: visibleBundles,
+        bundleSimulation: analysis.relocationBundleSimulation ?? null,
         recommendations: visibleRecommendations.map(({ placementOptions, ...item }) => item),
+        workItems,
         drawerRecommendations,
+        drawerBundles,
         filters: {
           pickZones: unique(recommendations.map((item) => item.pickZone)),
           currentZones: unique(recommendations.map((item) => item.currentZone)),

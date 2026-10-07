@@ -14,7 +14,10 @@ test("groups pick locations into pick zones, physical zones and bays", () => {
   const article = { articleNumber: "42570", name: "Potatis", weightKg: 7 };
   const analysis = {
     evaluations: { all: [{ articleNumber: "42570", priorityScore: 0.91, placementGap: 0.75 }] },
-    articles: { positioned: [{ articleNumber: "42570", pickFrequency: 187 }] },
+    articles: {
+      positioned: [{ articleNumber: "42570", pickFrequency: 187 }],
+      classification: { byArticle: new Map([["42570", { classification: "AX", abcClass: "A" }]]) },
+    },
     placements: { pickPlacements: [{ location, article }] },
     warehouse: { pickSequence: [{ location, pickSequence: 1 }] },
   };
@@ -27,4 +30,6 @@ test("groups pick locations into pick zones, physical zones and bays", () => {
   assert.equal(bay.articleCount, 1);
   assert.equal(bay.locations[0].articles[0].articleNumber, "42570");
   assert.equal(bay.metrics.priority, 0.91);
+  assert.equal(bay.metrics.abc, "A");
+  assert.equal(bay.locations[0].articles[0].classification, "AX");
 });

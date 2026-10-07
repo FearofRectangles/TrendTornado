@@ -16,6 +16,11 @@ const defaultArticleRules = ["7629", "7628", "134194", "134193", "99134"].map((a
   hideRelocation: false,
 }));
 
+export const KALMAR_WAREHOUSE_PROFILE = Object.freeze({
+  id: "KALMAR",
+  name: "Kalmar-standarden",
+});
+
 export const DEFAULT_SETTINGS = Object.freeze({
   analysis: Object.freeze({
     movementThreshold: 0.20,
@@ -36,6 +41,8 @@ export const DEFAULT_SETTINGS = Object.freeze({
   }),
   articleRules: Object.freeze(defaultArticleRules.map(Object.freeze)),
   warehouse: Object.freeze({
+    profileId: KALMAR_WAREHOUSE_PROFILE.id,
+    profileName: KALMAR_WAREHOUSE_PROFILE.name,
     pickAreas: Object.freeze(defaultPickAreas.map(Object.freeze)),
     zoneMappings: Object.freeze(defaultZoneMappings.map(Object.freeze)),
   }),
@@ -53,6 +60,8 @@ export function validateSettings(settings) {
   const abcBThreshold = Number(settings?.classification?.abcBThreshold);
   const zoneMappings = settings?.warehouse?.zoneMappings;
   const pickAreas = settings?.warehouse?.pickAreas;
+  const profileId = String(settings?.warehouse?.profileId ?? KALMAR_WAREHOUSE_PROFILE.id).trim().toUpperCase();
+  const profileName = String(settings?.warehouse?.profileName ?? KALMAR_WAREHOUSE_PROFILE.name).trim();
   const articleRules = settings?.articleRules ?? [];
 
   if (!Number.isFinite(movementThreshold) || movementThreshold < 0 || movementThreshold > 1) {
@@ -74,6 +83,7 @@ export function validateSettings(settings) {
     throw new Error("ABC-gränserna måste vara stigande och ligga mellan 0 och 100 %.");
   }
   if (!Array.isArray(pickAreas) || pickAreas.length === 0) throw new Error("Minst ett plockområde måste vara konfigurerat.");
+  if (!profileId || !profileName) throw new Error("Lagerprofilen måste ha ett namn.");
   const pickAreaNames = new Set();
   const normalizedPickAreas = pickAreas.map((area) => {
     const name = String(area.name ?? "").trim().toUpperCase();
@@ -114,6 +124,6 @@ export function validateSettings(settings) {
     distance: { standardBayWidthMeters, beamThicknessCm },
     classification: { abcAThreshold, abcBThreshold },
     articleRules: normalizedArticleRules,
-    warehouse: { pickAreas: normalizedPickAreas, zoneMappings: normalizedMappings },
+    warehouse: { profileId, profileName, pickAreas: normalizedPickAreas, zoneMappings: normalizedMappings },
   };
 }

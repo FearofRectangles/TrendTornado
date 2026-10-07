@@ -10,6 +10,8 @@ test("accepts and normalizes the default model settings", () => {
     classification: { abcAThreshold: 0.8, abcBThreshold: 0.95 },
     articleRules: DEFAULT_SETTINGS.articleRules.map((rule) => ({ ...rule })),
     warehouse: {
+      profileId: "KALMAR",
+      profileName: "Kalmar-standarden",
       pickAreas: DEFAULT_SETTINGS.warehouse.pickAreas.map((area) => ({ ...area })),
       zoneMappings: DEFAULT_SETTINGS.warehouse.zoneMappings.map((mapping) => ({ ...mapping })),
     },

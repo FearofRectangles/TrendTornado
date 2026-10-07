@@ -54,6 +54,7 @@
         <article class="summary-card"><i class="summary-arrow earlier">↑</i><div><strong><%= summary.earlier.toLocaleString("sv-SE") %></strong><span>tidigare</span></div></article>
         <article class="summary-card"><i class="summary-arrow later">↓</i><div><strong><%= summary.later.toLocaleString("sv-SE") %></strong><span>senare</span></div></article>
         <article class="summary-card ergonomic-summary"><i>♙</i><div><strong><%= summary.ergonomic.toLocaleString("sv-SE") %></strong><span>ergonomiskt prioriterade</span></div></article>
+        <article class="summary-card bundle-summary"><i>⌁</i><div><strong><%= summary.bundles.toLocaleString("sv-SE") %></strong><span>beroende flyttpaket</span></div></article>
       </section>
 
       <section class="relocation-filters card">
@@ -84,22 +85,37 @@
           <table class="work-table">
             <thead><tr><th data-sort="utility">Prio</th><th data-sort="article">Artikel</th><th data-sort="name">Namn</th><th data-sort="classification">Klass</th><th data-sort="quantity">Åtgång/vecka</th><th data-sort="pickZone">Plockzon</th><th data-sort="current">Nu</th><th></th><th data-sort="recommended">Rekommenderat</th><th data-sort="gap">Gap</th><th data-sort="ergonomics">Ergonomi</th><th></th></tr></thead>
             <tbody>
-              <% recommendations.forEach((item) => { const earlier = item.direction === "EARLIER"; %>
+              <% workItems.forEach((workItem) => { if (workItem.type === 'SINGLE') { const item = workItem.item; const earlier = item.direction === "EARLIER"; %>
                 <tr class="work-row" tabindex="0" role="button" data-article-number="<%= item.articleNumber %>" data-name="<%= item.name.toLowerCase() %>" data-pick-zone="<%= item.pickZone %>" data-classification="<%= item.classification?.classification ?? '' %>" data-direction="<%= item.direction %>" data-ergonomic="<%= item.ergonomicRecommendation %>" data-current-zone="<%= item.currentZone %>" data-recommended-zone="<%= item.recommendedZone %>" data-gap="<%= Math.abs(item.placementGap * 100) %>" data-utility="<%= item.utility.score %>" data-quantity="<%= item.pickedQuantityPerWeek %>" data-search="<%= (item.articleNumber + ' ' + item.name).toLowerCase() %>">
                   <td><span class="utility-score"><strong><%= item.utility.score %></strong><small><%= item.utility.label %></small></span></td>
                   <td><strong><%= item.articleNumber %></strong></td>
-                  <td><div class="work-name"><%= item.name %></div></td>
+                  <td><div class="work-name"><%= item.name %></div><% if (item.bundle) { %><small class="bundle-tag">Flytta endast som paket</small><% } %></td>
                   <td><% if (item.classification) { %><span class="badge class-<%= item.classification.abcClass.toLowerCase() %>"><%= item.classification.classification %></span><% } else { %>—<% } %></td>
                   <td><strong><%= item.pickedQuantityPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 1 }) %></strong><small>enheter/vecka</small></td>
                   <td><span class="badge zone-badge has-pick-area-color" style="--pick-area-color: <%= pickAreaColors[item.pickZone] ?? '#78827a' %>"><%= item.pickZone %></span></td>
-                  <td><strong class="work-location"><%= item.currentZone %> <%= item.currentSection %></strong><small><%= (item.currentPosition * 100).toFixed(1) %> %</small></td>
+                  <td><strong class="work-location"><%= item.currentZone %> <%= item.currentSection %></strong><small><%= (item.currentPosition * 100).toFixed(1) %> %</small><% if (item.placementEvidence?.source === 'WMS_HISTORY') { %><small class="work-placement-source">WMS-observerad</small><% } %></td>
                   <td class="work-direction <%= earlier ? 'earlier' : 'later' %>"><%= earlier ? '↑' : '↓' %></td>
                   <td><strong class="work-location"><%= item.recommendedZone %> <%= item.recommendedSection %></strong><small><%= (item.desiredPosition * 100).toFixed(1) %> %</small></td>
                   <td><span class="badge <%= earlier ? 'gap-earlier' : 'gap-later' %>"><%= earlier ? '+' : '−' %><%= Math.abs(item.placementGap * 100).toFixed(1) %> %</span></td>
                   <td><span class="ergonomic-dot <%= item.ergonomicRecommendation.toLowerCase() %>" title="<%= item.ergonomicRecommendation %>"></span><%= item.ergonomicRecommendation === 'LOW_STRONGLY_RECOMMENDED' ? 'Låg rekommenderas' : item.ergonomicRecommendation === 'LOW_PREFERRED' ? 'Låg föredras' : 'Flexibel' %></td>
                   <td class="open-arrow">›</td>
                 </tr>
-              <% }) %>
+              <% } else { const bundle = workItem.bundle; const directions = [...new Set(bundle.members.map((member) => member.direction))]; const ergonomics = [...new Set(bundle.members.map((member) => member.ergonomicRecommendation))]; const classifications = bundle.members.map((member) => member.classification?.classification ?? '').filter(Boolean); const maxGap = Math.max(...bundle.members.map((member) => Math.abs(member.placementGap * 100))); %>
+                <tr class="work-row bundle-work-row" tabindex="0" role="button" data-bundle-id="<%= bundle.id %>" data-article-number="<%= bundle.articleNumbers.join('+') %>" data-name="<%= bundle.members.map((member) => member.name).join(' ').toLowerCase() %>" data-pick-zone="<%= bundle.pickZone %>" data-classification="<%= classifications.join(' ') %>" data-direction="<%= directions.join(' ') %>" data-ergonomic="<%= ergonomics.join(' ') %>" data-current-zone="<%= [...new Set(bundle.members.map((member) => member.currentZone))].join('|') %>" data-recommended-zone="<%= [...new Set(bundle.members.map((member) => member.recommendedZone))].join('|') %>" data-gap="<%= maxGap %>" data-utility="<%= bundle.score %>" data-quantity="<%= bundle.members.reduce((sum, member) => sum + member.pickedQuantityPerWeek, 0) %>" data-search="<%= bundle.members.map((member) => member.articleNumber + ' ' + member.name).join(' ').toLowerCase() %>">
+                  <td><span class="utility-score bundle-utility"><strong><%= bundle.score %></strong><small><%= bundle.label %></small><b>PAKET · <%= bundle.members.length %></b></span></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><strong><%= member.articleNumber %></strong></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><span class="work-name"><%= member.name %></span></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><% if (member.classification) { %><span class="badge class-<%= member.classification.abcClass.toLowerCase() %>"><%= member.classification.classification %></span><% } else { %>—<% } %></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><strong><%= member.pickedQuantityPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 1 }) %></strong><small> enheter/v</small></div><% }) %></div></td>
+                  <td><span class="badge zone-badge has-pick-area-color" style="--pick-area-color: <%= pickAreaColors[bundle.pickZone] ?? '#78827a' %>"><%= bundle.pickZone %></span></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><strong class="work-location"><%= member.currentZone %> <%= member.currentSection %></strong><small><%= (member.currentPosition * 100).toFixed(1) %> %</small><% if (member.placementEvidence?.source === 'WMS_HISTORY') { %><small class="work-placement-source">WMS-observerad</small><% } %></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { const earlier = member.direction === 'EARLIER'; %><div class="work-direction <%= earlier ? 'earlier' : 'later' %>"><%= earlier ? '↑' : '↓' %></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><strong class="work-location"><%= member.recommendedZone %> <%= member.recommendedSection %></strong><small><%= (member.desiredPosition * 100).toFixed(1) %> %</small></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { const earlier = member.direction === 'EARLIER'; %><div><span class="badge <%= earlier ? 'gap-earlier' : 'gap-later' %>"><%= earlier ? '+' : '−' %><%= Math.abs(member.placementGap * 100).toFixed(1) %> %</span></div><% }) %></div></td>
+                  <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><span class="ergonomic-dot <%= member.ergonomicRecommendation.toLowerCase() %>"></span><%= member.ergonomicRecommendation === 'LOW_STRONGLY_RECOMMENDED' ? 'Låg rekommenderas' : member.ergonomicRecommendation === 'LOW_PREFERRED' ? 'Låg föredras' : 'Flexibel' %></div><% }) %></div></td>
+                  <td class="open-arrow">›</td>
+                </tr>
+              <% } }) %>
             </tbody>
           </table>
         </div>
@@ -117,6 +133,7 @@
   <form id="relocationExportForm" method="post" action="/relocations/export.pdf" hidden><input id="exportArticleNumbers" name="articleNumbers" type="hidden"></form>
 
   <script id="relocationData" type="application/json"><%- JSON.stringify(drawerRecommendations).replace(/</g, "\\u003c") %></script>
+  <script id="bundleData" type="application/json"><%- JSON.stringify(drawerBundles).replace(/</g, "\\u003c") %></script>
   <script src="/js/relocations.js"></script>
 </body>
 </html>

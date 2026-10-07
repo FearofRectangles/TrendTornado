@@ -68,12 +68,15 @@ import {
   resolveIdealPlacementArea,
 } from "../optimization/ResolveIdealPlacementArea.js";
 import { createPlacementOptionFinder } from "../optimization/PlacementOptionFinder.js";
+import { PickTimeAnalysisEngine } from "./PickTimeAnalysisEngine.js";
+import { RelocationBundleEngine } from "../optimization/RelocationBundleEngine.js";
 
 
 export class WarehouseAnalysisService {
 
   static analyze({
     historyRecords,
+    movementRecords = [],
     articles,
     locations,
     placementRecords,
@@ -216,6 +219,10 @@ const periodEnd =
       attachPickPlacements(
         enrichedStatistics,
         pickPlacements,
+        {
+          movementRecords,
+          locations,
+        },
       );
 
     const positionedArticles =
@@ -223,6 +230,20 @@ const periodEnd =
         analyzedArticles,
         pickSequence,
       );
+
+    const observedPickPlacements = positionedArticles
+      .filter((article) => article.placementEvidence?.source === "WMS_HISTORY")
+      .map((article) => ({
+        article,
+        location: article.positionedPickLocations[0]?.location,
+        source: "WMS_HISTORY",
+        observedAt: article.placementEvidence.observedAt,
+      }))
+      .filter((placement) => placement.location);
+    const resolvedPickPlacements = [
+      ...pickPlacements,
+      ...observedPickPlacements,
+    ];
 
     const shelfHeights = buildShelfHeights(
       locations,
@@ -490,6 +511,14 @@ const periodEnd =
     // Relocation recommendations
     // --------------------------------------------------
 
+    const pickTimeAnalysis = PickTimeAnalysisEngine.analyze({
+      movementRecords,
+      positionedArticles,
+      evaluations: placementEvaluations,
+      movementThreshold,
+      pickSequence,
+    });
+
     const relocationRecommendations =
       (() => {
       const observedWeekCount = classification.observedWeekCount;
@@ -499,10 +528,11 @@ const periodEnd =
       ]));
       const findPlacementOptions = createPlacementOptionFinder({
         locations,
-        placements: pickPlacements,
+        placements: resolvedPickPlacements,
         pickSequence,
         weeklyQuantityByArticle,
       });
+
       return rankedEvaluations
         .map(
           (evaluation) => {
@@ -573,6 +603,7 @@ const periodEnd =
               evaluation,
               article,
               currentLocation,
+              placementEvidence: article.placementEvidence,
               currentPhysicalPosition,
               currentShelfHeight,
               recommendedArea,
@@ -586,6 +617,22 @@ const periodEnd =
             recommendation !== null,
         );
       })();
+
+    const relocationBundles = RelocationBundleEngine.analyze({
+      movementRecords,
+      positionedArticles,
+      evaluations: placementEvaluations,
+      movementThreshold,
+      secondsPerFullSpan: pickTimeAnalysis.secondsPerFullSpan,
+    });
+    const bundleArticleNumbers = new Set(relocationBundles.flatMap((bundle) => bundle.articleNumbers));
+    const relocationBundleSimulation = PickTimeAnalysisEngine.analyze({
+      movementRecords,
+      positionedArticles,
+      evaluations: placementEvaluations.filter((evaluation) => bundleArticleNumbers.has(String(evaluation.articleNumber))),
+      movementThreshold,
+      pickSequence,
+    });
 
 
     // --------------------------------------------------
@@ -626,6 +673,55 @@ const periodEnd =
             ),
       );
 
+    const snapshotPlacementArticles = positionedArticles.filter((article) => (
+      article.placementEvidence?.source === "PLACEMENT_SNAPSHOT"
+    )).length;
+    const wmsObservedPlacementArticles = positionedArticles.filter((article) => (
+      article.placementEvidence?.source === "WMS_HISTORY"
+    )).length;
+    const unknownPlacementArticles = positionedArticles.length
+      - snapshotPlacementArticles
+      - wmsObservedPlacementArticles;
+    const pickSequenceCodes = new Set(pickSequence.map((entry) => entry.location.locationCode));
+    const movementRecordsWithKnownLocation = movementRecords.filter((record) => (
+      pickSequenceCodes.has(String(record.sourceLocation))
+    )).length;
+    const articleByNumber = new Map(articles.map((article) => [String(article.articleNumber), article]));
+    const historyRecordsWithValidWeight = historyRecords.filter((record) => {
+      const article = articleByNumber.get(String(record.articleNumber));
+      return article && Number.isFinite(article.weightKg) && article.weightKg >= 0;
+    }).length;
+
+    const dataCoverage = {
+      placement: {
+        analyzedArticles: positionedArticles.length,
+        snapshotArticles: snapshotPlacementArticles,
+        wmsObservedArticles: wmsObservedPlacementArticles,
+        resolvedArticles: snapshotPlacementArticles + wmsObservedPlacementArticles,
+        unknownArticles: unknownPlacementArticles,
+        snapshotCoverage: positionedArticles.length > 0
+          ? snapshotPlacementArticles / positionedArticles.length
+          : 0,
+        resolvedCoverage: positionedArticles.length > 0
+          ? (snapshotPlacementArticles + wmsObservedPlacementArticles) / positionedArticles.length
+          : 0,
+      },
+      movementLocation: {
+        records: movementRecords.length,
+        resolvedRecords: movementRecordsWithKnownLocation,
+        coverage: movementRecords.length > 0
+          ? movementRecordsWithKnownLocation / movementRecords.length
+          : 0,
+      },
+      weight: {
+        records: historyRecords.length,
+        validRecords: historyRecordsWithValidWeight,
+        coverage: historyRecords.length > 0
+          ? historyRecordsWithValidWeight / historyRecords.length
+          : 0,
+      },
+    };
+
 
     // --------------------------------------------------
     // Result
@@ -652,6 +748,8 @@ const periodEnd =
           placementResult,
 
         pickPlacements,
+        observedPickPlacements,
+        resolvedPickPlacements,
       },
 
       articles: {
@@ -690,8 +788,15 @@ const periodEnd =
       recommendations:
         relocationRecommendations,
 
+      relocationBundles,
+
+      relocationBundleSimulation,
+
+      dataCoverage,
+
       simulation: {
         historicalOrders,
+        pickTime: pickTimeAnalysis,
 
         projectedOrders,
 

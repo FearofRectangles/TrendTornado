@@ -1,6 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
+import { OfficeContext } from "../../config/OfficeContext.js";
 
 const databasePath = path.resolve("data", "analysis", "trendtornado.sqlite");
 let database = null;
@@ -13,6 +14,7 @@ async function db() {
     PRAGMA journal_mode = WAL;
     CREATE TABLE IF NOT EXISTS analysis_runs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      office_id TEXT NOT NULL DEFAULT 'KALMAR',
       name TEXT NOT NULL,
       status TEXT NOT NULL,
       period_start TEXT NOT NULL,
@@ -29,6 +31,14 @@ async function db() {
     CREATE INDEX IF NOT EXISTS analysis_runs_active_idx ON analysis_runs(is_active);
     CREATE INDEX IF NOT EXISTS analysis_runs_created_idx ON analysis_runs(created_at DESC);
   `);
+  const columns = database.prepare("PRAGMA table_info(analysis_runs)").all();
+  if (!columns.some((column) => column.name === "office_id")) {
+    database.exec("ALTER TABLE analysis_runs ADD COLUMN office_id TEXT NOT NULL DEFAULT 'default'");
+  }
+  if (OfficeContext.id === "KALMAR") {
+    database.prepare("UPDATE analysis_runs SET office_id = ? WHERE office_id = 'default'").run(OfficeContext.id);
+  }
+  database.exec("CREATE INDEX IF NOT EXISTS analysis_runs_office_active_idx ON analysis_runs(office_id, is_active)");
   return database;
 }
 
@@ -36,6 +46,7 @@ function metadata(row) {
   if (!row) return null;
   return {
     id: row.id,
+    officeId: row.office_id,
     name: row.name,
     status: row.status,
     periodStart: row.period_start,
@@ -55,15 +66,15 @@ export class AnalysisSnapshotRepository {
     const rows = (await db()).prepare(`
       SELECT id, name, status, period_start, period_end, created_at, completed_at,
              algorithm_version, settings_json, input_rows, is_active, error_message
-      FROM analysis_runs ORDER BY created_at DESC, id DESC
-    `).all();
+      FROM analysis_runs WHERE office_id = ? ORDER BY created_at DESC, id DESC
+    `).all(OfficeContext.id);
     return rows.map(metadata);
   }
 
   static async getActive() {
     const row = (await db()).prepare(
-      "SELECT * FROM analysis_runs WHERE is_active = 1 AND status = 'COMPLETED' LIMIT 1",
-    ).get();
+      "SELECT * FROM analysis_runs WHERE office_id = ? AND is_active = 1 AND status = 'COMPLETED' LIMIT 1",
+    ).get(OfficeContext.id);
     return row ? { ...metadata(row), resultBlob: row.result_blob } : null;
   }
 
@@ -71,9 +82,9 @@ export class AnalysisSnapshotRepository {
     const createdAt = new Date().toISOString();
     const result = (await db()).prepare(`
       INSERT INTO analysis_runs (
-        name, status, period_start, period_end, created_at, algorithm_version, settings_json
-      ) VALUES (?, 'RUNNING', ?, ?, ?, ?, ?)
-    `).run(name, periodStart, periodEnd, createdAt, algorithmVersion, JSON.stringify(settings));
+        office_id, name, status, period_start, period_end, created_at, algorithm_version, settings_json
+      ) VALUES (?, ?, 'RUNNING', ?, ?, ?, ?, ?)
+    `).run(OfficeContext.id, name, periodStart, periodEnd, createdAt, algorithmVersion, JSON.stringify(settings));
     return Number(result.lastInsertRowid);
   }
 
@@ -81,13 +92,13 @@ export class AnalysisSnapshotRepository {
     const connection = await db();
     connection.exec("BEGIN IMMEDIATE");
     try {
-      if (activate) connection.prepare("UPDATE analysis_runs SET is_active = 0").run();
+      if (activate) connection.prepare("UPDATE analysis_runs SET is_active = 0 WHERE office_id = ?").run(OfficeContext.id);
       connection.prepare(`
         UPDATE analysis_runs
         SET status = 'COMPLETED', completed_at = ?, result_blob = ?, input_rows = ?,
             is_active = ?
-        WHERE id = ?
-      `).run(new Date().toISOString(), resultBlob, inputRows, activate ? 1 : 0, id);
+        WHERE id = ? AND office_id = ?
+      `).run(new Date().toISOString(), resultBlob, inputRows, activate ? 1 : 0, id, OfficeContext.id);
       connection.exec("COMMIT");
     } catch (error) {
       connection.exec("ROLLBACK");
@@ -97,8 +108,8 @@ export class AnalysisSnapshotRepository {
 
   static async fail(id, error) {
     (await db()).prepare(`
-      UPDATE analysis_runs SET status = 'FAILED', completed_at = ?, error_message = ? WHERE id = ?
-    `).run(new Date().toISOString(), String(error?.message ?? error), id);
+      UPDATE analysis_runs SET status = 'FAILED', completed_at = ?, error_message = ? WHERE id = ? AND office_id = ?
+    `).run(new Date().toISOString(), String(error?.message ?? error), id, OfficeContext.id);
   }
 
   static async activate(id) {
@@ -106,11 +117,11 @@ export class AnalysisSnapshotRepository {
     connection.exec("BEGIN IMMEDIATE");
     try {
       const target = connection.prepare(
-        "SELECT id FROM analysis_runs WHERE id = ? AND status = 'COMPLETED'",
-      ).get(id);
+        "SELECT id FROM analysis_runs WHERE id = ? AND office_id = ? AND status = 'COMPLETED'",
+      ).get(id, OfficeContext.id);
       if (!target) throw new Error("Analysen finns inte eller är inte färdig.");
-      connection.prepare("UPDATE analysis_runs SET is_active = 0").run();
-      connection.prepare("UPDATE analysis_runs SET is_active = 1 WHERE id = ?").run(id);
+      connection.prepare("UPDATE analysis_runs SET is_active = 0 WHERE office_id = ?").run(OfficeContext.id);
+      connection.prepare("UPDATE analysis_runs SET is_active = 1 WHERE id = ? AND office_id = ?").run(id, OfficeContext.id);
       connection.exec("COMMIT");
     } catch (error) {
       connection.exec("ROLLBACK");
@@ -120,10 +131,10 @@ export class AnalysisSnapshotRepository {
 
   static async delete(id) {
     const connection = await db();
-    const target = connection.prepare("SELECT id, is_active FROM analysis_runs WHERE id = ?").get(Number(id));
+    const target = connection.prepare("SELECT id, is_active FROM analysis_runs WHERE id = ? AND office_id = ?").get(Number(id), OfficeContext.id);
     if (!target) throw new Error("Analysen finns inte.");
     if (target.is_active) throw new Error("Den aktiva analysen kan inte tas bort. Aktivera en annan analys först.");
-    connection.prepare("DELETE FROM analysis_runs WHERE id = ?").run(Number(id));
+    connection.prepare("DELETE FROM analysis_runs WHERE id = ? AND office_id = ?").run(Number(id), OfficeContext.id);
   }
 
   static get path() {

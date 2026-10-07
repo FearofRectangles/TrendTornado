@@ -8,6 +8,11 @@ export class AffinityController {
       const { data, analysis, run: activeAnalysis, runs: analysisRuns } = await AnalysisSnapshotService.getActive();
       const settings = activeAnalysis.settings;
       const currentSettings = await SettingsRepository.load();
+      const pickAreasByName = new Map([
+        ...(settings.warehouse?.pickAreas ?? []).map((area) => [area.name, area]),
+        ...currentSettings.warehouse.pickAreas.map((area) => [area.name, area]),
+      ]);
+      const pickAreas = [...pickAreasByName.values()];
       res.render("affinity", {
         title: "Affinitet",
         period: analysis.period,
@@ -15,7 +20,8 @@ export class AffinityController {
         model: AnalysisSnapshotService.derived(activeAnalysis.id, "affinity-view", () => buildAffinityViewModel({ analysis, historyRecords: data.historyRecords, masterArticles: data.articles, settings })),
         activeAnalysis,
         analysisRuns,
-        pickAreaColors: Object.fromEntries(currentSettings.warehouse.pickAreas.map((area) => [area.name, area.color])),
+        pickAreas,
+        pickAreaColors: Object.fromEntries(pickAreas.map((area) => [area.name, area.color])),
       });
     } catch (error) { next(error); }
   }

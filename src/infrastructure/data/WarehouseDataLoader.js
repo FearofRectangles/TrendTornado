@@ -2,10 +2,13 @@ import {
   readCsvFile,
 } from "../csv/CsvReader.js";
 import { readPlacementCsvFile } from "../csv/PlacementCsvReader.js";
+import { readMovementCsvFile } from "../csv/MovementCsvReader.js";
 
 import {
   mapPickHistoryCsvRow,
 } from "../importers/history/PickHistoryCsvMapper.js";
+import { mapMovementToPickHistoryRecord } from "../importers/history/MovementHistoryMapper.js";
+import { isExcludedArticle } from "../../domain/analytics/history/PickHistoryRules.js";
 
 import {
   mapArticleCsvRow,
@@ -26,9 +29,11 @@ export class WarehouseDataLoader {
     articlePath,
     locationPath,
     placementPath,
+    movementPath = [],
   }) {
-    const historyPaths =
-      this.#normalizeHistoryPaths(historyPath);
+    const historyPaths = historyPath
+      ? this.#normalizeHistoryPaths(historyPath)
+      : [];
 
     this.#assertPath(
       articlePath,
@@ -76,6 +81,16 @@ export class WarehouseDataLoader {
     const placementRows =
       placementSource.rows;
 
+    const movementPaths = Array.isArray(movementPath) ? movementPath : [movementPath].filter(Boolean);
+    const movementSources = await Promise.all(movementPaths.map((sourcePath) => readMovementCsvFile(sourcePath)));
+    const seenMovementEvents = new Set();
+    const movementRecords = movementSources.flatMap((source) => source.records).filter((record) => {
+      if (isExcludedArticle(record.articleNumber)) return false;
+      const key = `${record.orderNumber}\u0000${record.worker}\u0000${record.articleNumber}\u0000${record.quantity}\u0000${record.sourceLocation}\u0000${record.loadCarrier}\u0000${record.occurredAt.toISOString()}`;
+      if (seenMovementEvents.has(key)) return false;
+      seenMovementEvents.add(key); return true;
+    });
+
 
     // --------------------------------------------------
     // History
@@ -92,8 +107,9 @@ export class WarehouseDataLoader {
     const historyMerge =
       mergeHistoryRecordSources(mappedHistorySources);
 
-    const historyRecords =
-      historyMerge.records;
+    const historyRecords = movementPaths.length
+      ? movementRecords.map(mapMovementToPickHistoryRecord).filter(Boolean)
+      : historyMerge.records;
 
     const historyRows =
       historySourceRows.flatMap((source) => source.rows);
@@ -170,16 +186,17 @@ export class WarehouseDataLoader {
       articles,
       locations,
       placementRecords,
+      movementRecords,
 
       importSummary: {
-        historyRows:
-          historyRows.length,
+        historyRows: movementPaths.length
+          ? movementSources.reduce((sum, source) => sum + source.diagnostics.rawRows, 0)
+          : historyRows.length,
 
         validHistoryRecords:
           historyRecords.length,
 
-        historyFiles:
-          historyPaths.length,
+        historyFiles: movementPaths.length || historyPaths.length,
 
         duplicateHistoryDocuments:
           historyMerge.duplicateDocuments,
@@ -213,6 +230,11 @@ export class WarehouseDataLoader {
 
         ignoredPlacementRows:
           placementSource.diagnostics.ignoredRows,
+
+        movementFiles: movementPaths.length,
+        movementRows: movementSources.reduce((sum, source) => sum + source.diagnostics.rawRows, 0),
+        validMovementRecords: movementRecords.length,
+        ignoredMovementRows: movementSources.reduce((sum, source) => sum + source.diagnostics.ignoredRows, 0),
       },
 
       invalidLocationRows,

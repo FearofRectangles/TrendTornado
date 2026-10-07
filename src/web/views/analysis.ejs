@@ -57,14 +57,21 @@
       </section>
 
       <section class="simulation-analysis card">
-        <div class="simulation-analysis-header"><div><span class="section-number">05</span><h2>Simuleringsanalys</h2><p>Samma kompletta historiska plockdokument körs genom nuvarande och projicerad layout.</p></div><div class="coverage-chip"><strong><%= (model.simulation.coverage * 100).toFixed(1) %> %</strong><span>snapshot coverage</span></div></div>
+        <div class="simulation-analysis-header"><div><span class="section-number">05</span><h2>Simuleringsanalys</h2><p>Samma kompletta historiska plockdokument körs genom nuvarande och projicerad layout.</p></div><div class="coverage-chip"><strong><%= (model.simulation.coverage * 100).toFixed(1) %> %</strong><span>simulerbara orderrader</span></div></div>
+        <% const coverage = model.simulation.dataCoverage; %>
+        <div class="data-coverage-grid">
+          <div><span>Aktuell placeringssnapshot</span><strong><%= (coverage.placement.snapshotCoverage * 100).toFixed(1) %> %</strong><small><%= coverage.placement.snapshotArticles.toLocaleString('sv-SE') %> artiklar · hög konfidens</small></div>
+          <div class="coverage-improved"><span>Placering inklusive WMS</span><strong><%= (coverage.placement.resolvedCoverage * 100).toFixed(1) %> %</strong><small>+<%= coverage.placement.wmsObservedArticles.toLocaleString('sv-SE') %> senast observerade</small></div>
+          <div><span>WMS-plats på plockrader</span><strong><%= (coverage.movementLocation.coverage * 100).toFixed(1) %> %</strong><small><%= coverage.movementLocation.resolvedRecords.toLocaleString('sv-SE') %> av <%= coverage.movementLocation.records.toLocaleString('sv-SE') %> rader</small></div>
+          <div><span>Giltig viktdata</span><strong><%= (coverage.weight.coverage * 100).toFixed(1) %> %</strong><small><%= coverage.weight.validRecords.toLocaleString('sv-SE') %> av <%= coverage.weight.records.toLocaleString('sv-SE') %> rader</small></div>
+        </div>
         <div class="simulation-labels"><span>Nuvarande</span><i></i><span>Optimerat</span></div>
         <div class="simulation-comparison-grid">
           <div class="simulation-row"><span>Flerplocksspann<small>Lägre är bättre</small></span><strong><%= (model.simulation.baseline.averageMultiPickSpan * 100).toFixed(1) %> %</strong><i>→</i><strong class="optimized"><%= (model.simulation.optimized.averageMultiPickSpan * 100).toFixed(1) %> %</strong><b>−<%= (model.simulation.comparison.multiPickSpan.relativeImprovement * 100).toFixed(1) %> %</b></div>
           <div class="simulation-row"><span>Viktordning<small>Högre är bättre</small></span><strong><%= (model.simulation.baseline.weightOrderScore * 100).toFixed(1) %> %</strong><i>→</i><strong class="optimized"><%= (model.simulation.optimized.weightOrderScore * 100).toFixed(1) %> %</strong><b>+<%= (model.simulation.comparison.weightOrder.percentagePointImprovement * 100).toFixed(1) %> p.e.</b></div>
           <div class="simulation-row"><span>Rätt viktpar<small>Tyngre före lättare</small></span><strong><%= model.simulation.baseline.correctlyOrderedPairs.toLocaleString('sv-SE') %></strong><i>→</i><strong class="optimized"><%= model.simulation.optimized.correctlyOrderedPairs.toLocaleString('sv-SE') %></strong><b>+<%= model.simulation.improvedWeightPairs.toLocaleString('sv-SE') %></b></div>
         </div>
-        <div class="method-box"><h3>Så görs jämförelsen</h3><div><span>1</span><p>Endast historiska dokument som kan återskapas komplett mot placeringssnapshoten används.</p></div><div><span>2</span><p>Exakt samma order, artiklar, kvantiteter och vikter används före och efter.</p></div><div><span>3</span><p>Artiklar med ett absolut placement gap på minst 20 % flyttas till sin beräknade relativa målposition.</p></div><div><span>4</span><p>Plockspann och viktordning räknas om; skillnaden är den simulerade effekten av förslaget.</p></div></div>
+        <div class="method-box"><h3>Så görs jämförelsen</h3><div><span>1</span><p>Aktuell placeringssnapshot används först. Saknas artikeln där används dess senaste giltiga WMS-plockplats med medelkonfidens.</p></div><div><span>2</span><p>Endast dokument som därefter kan återskapas komplett används. Samma order, artiklar, kvantiteter och vikter jämförs före och efter.</p></div><div><span>3</span><p>Artiklar med ett absolut placement gap på minst 20 % flyttas till sin beräknade relativa målposition.</p></div><div><span>4</span><p>Plockspann och viktordning räknas om; skillnaden är den simulerade effekten av förslaget.</p></div></div>
       </section>
     </main>
   </div>

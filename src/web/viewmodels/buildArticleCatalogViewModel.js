@@ -42,6 +42,18 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = [], sett
           : null
       );
       const location = positioned?.location ?? null;
+      const placementEvidence = analyzed?.placementEvidence ?? (
+        fallbackLocations.length > 0
+          ? { source: "PLACEMENT_SNAPSHOT", confidence: "HIGH", observedAt: null, locationCode: location?.locationCode ?? null }
+          : { source: "NONE", confidence: "NONE", observedAt: null, locationCode: null }
+      );
+      const observedAt = placementEvidence.observedAt instanceof Date
+        ? placementEvidence.observedAt
+        : placementEvidence.observedAt ? new Date(placementEvidence.observedAt) : null;
+      const analysisEnd = analysis.period?.end instanceof Date ? analysis.period.end : null;
+      const placementAgeDays = observedAt && analysisEnd && !Number.isNaN(observedAt.getTime())
+        ? Math.max(0, Math.floor((analysisEnd.getTime() - observedAt.getTime()) / 86_400_000))
+        : null;
       const physical = location
         ? physicalByLocation.get(location.locationCode) ?? null
         : null;
@@ -71,6 +83,10 @@ export function buildArticleCatalogViewModel(analysis, masterArticles = [], sett
         averageQuantityPerPick: analyzed?.averageQuantityPerPick ?? 0,
         pickZone: location?.pickZoneType ?? null,
         currentLocation: location?.locationCode ?? null,
+        placementSource: placementEvidence.source,
+        placementConfidence: placementEvidence.confidence,
+        placementObservedAt: observedAt,
+        placementAgeDays,
         currentZone: location?.zone ?? null,
         currentSection: physical?.zoneSection ?? null,
         currentPosition: evaluation?.currentPosition ?? positioned?.relativePickPosition ?? null,

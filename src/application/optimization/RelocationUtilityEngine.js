@@ -19,10 +19,12 @@ function feasibilityScore(options) {
   return 0.15;
 }
 
-function confidenceScore(classification) {
+function confidenceScore(classification, placementEvidence) {
   const quality = { STRONG: 1, RELIABLE: 0.8, PRELIMINARY: 0.6, INSUFFICIENT: 0.3 }[classification?.quality] ?? 0.3;
   const stability = { X: 1, Y: 0.75, Z: 0.5 }[classification?.xyzClass] ?? 0.4;
-  return (quality + stability) / 2;
+  const historicalConfidence = (quality + stability) / 2;
+  const placementConfidence = { HIGH: 1, MEDIUM: 0.65, LOW: 0.4, NONE: 0.1 }[placementEvidence?.confidence] ?? 0.5;
+  return 0.7 * historicalConfidence + 0.3 * placementConfidence;
 }
 
 function ergonomicScore(recommendation) {
@@ -48,7 +50,7 @@ export class RelocationUtilityEngine {
       const gap = clamp(Math.abs(recommendation.placementGap));
       const flowImpact = (direction === "EARLIER" ? rawActivity : 1 - rawActivity) * gap;
       const feasibility = feasibilityScore(recommendation.placementOptions);
-      const confidence = confidenceScore(recommendation.classification);
+      const confidence = confidenceScore(recommendation.classification, recommendation.placementEvidence);
       const ergonomics = ergonomicScore(recommendation.ergonomicRecommendation);
       const components = { activity, gap, flowImpact, feasibility, confidence, ergonomics };
       const contributions = Object.fromEntries(Object.entries(components).map(([key, value]) => [

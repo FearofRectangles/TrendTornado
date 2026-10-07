@@ -1,4 +1,6 @@
 const clusters = JSON.parse(document.getElementById("affinityData")?.textContent ?? "[]");
+const pickAreas = JSON.parse(document.getElementById("pickAreaData")?.textContent ?? "[]");
+const pickAreaByName = new Map(pickAreas.map((area) => [area.name, area]));
 const byId = new Map(clusters.map((item) => [item.id, item]));
 let rows = [...document.querySelectorAll(".cluster-row")];
 const tabs = [...document.querySelectorAll("[data-zone]")];
@@ -18,8 +20,8 @@ const sortableHeaders = [...document.querySelectorAll(".cluster-table-wrap th[da
 const tableBody = document.querySelector(".cluster-table-wrap tbody");
 const format = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 1 });
 const escape = (value) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-const zoneName = (value) => ({ KOLONIAL: "Kolonial", KYLT: "Kylt", GRÖNSAKER: "Grönsaker", FRYS: "Frys" }[value] ?? value);
-const zoneClass = (value) => value.toLowerCase().replace("ö", "o");
+const zoneName = (value) => pickAreaByName.get(value)?.name ?? value;
+const zoneColor = (value) => pickAreaByName.get(value)?.color ?? "#78827a";
 const locationLabel = (article) => `Zon ${article.physicalZone ?? "—"} · ${article.flowSection ?? "Okänd"}`;
 
 function render() {
@@ -42,8 +44,8 @@ function openDrawer(id) {
   const item = byId.get(id);
   if (!item) return;
   content.innerHTML = `
-    <div class="drawer-eyebrow">Avdelningsbundet affinity-kluster</div><h2>${escape(item.name)}</h2>
-    <span class="drawer-zone zone-badge zone-${zoneClass(item.pickZone)}">${escape(zoneName(item.pickZone))}</span>
+    <div class="drawer-eyebrow">Plockområdesbundet affinity-kluster</div><h2>${escape(item.name)}</h2>
+    <span class="drawer-zone zone-badge has-pick-area-color" style="--pick-area-color:${zoneColor(item.pickZone)}">${escape(zoneName(item.pickZone))}</span>
     <div class="drawer-kpis"><div><span>Förekomst</span><strong>${format.format(item.occurrenceCount)} order</strong></div><div><span>Opportunity</span><strong>${format.format(item.opportunityScore)}</strong></div><div><span>Intern täthet</span><strong>${format.format(item.internalDensity * 100)} %</strong></div><div><span>Uppskattad spridning</span><strong>${format.format(item.estimatedSpreadMeters)} m</strong></div></div>
     <div class="priority-explanation"><strong>Varför prioriteras klustret?</strong><p>${escape(item.priorityReason)}</p><span>Opportunity kombinerar samplockningsstyrka, artikelaktivitet, fysisk spridning och hur starkt historiskt underlaget är.</span></div>
     <div class="flow-heading"><strong>Position i plockflödet</strong><span>Punkterna visar artikelns relativa position inom ${escape(zoneName(item.pickZone))}.</span></div>

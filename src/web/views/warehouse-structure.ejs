@@ -29,8 +29,8 @@
       <div id="pickZoneTabs" class="pick-zone-tabs" role="tablist"><% model.pickZones.forEach((pickZone, index) => { %><button type="button" role="tab" data-pick-zone="<%= pickZone.name %>" aria-selected="<%= index === 0 %>"><%= pickZone.name %><small><%= pickZone.zones.length %> zoner</small></button><% }) %></div>
 
       <section class="warehouse-map-card card">
-        <div class="map-toolbar"><div><span class="flow-label">Plockriktning <b>→</b></span><p>Varje ruta motsvarar ett fack. Starkare färg betyder högre värde.</p></div><fieldset id="colorMode"><legend>Färg efter</legend><label><input type="radio" name="color" value="priority" checked><i></i>Prioritet</label><label><input type="radio" name="color" value="frequency"><i></i>Plockfrekvens</label><label><input type="radio" name="color" value="weight"><i></i>Vikt</label><label><input type="radio" name="color" value="gap"><i></i>Placement gap</label></fieldset></div>
-        <div class="heat-scale"><span>Lågt</span><i></i><i></i><i></i><i></i><i></i><span>Högt</span><b>Tomt fack</b></div>
+        <div class="map-toolbar"><div><span class="flow-label">Plockriktning <b>→</b></span><p>Varje ruta motsvarar ett fack och färgsätts efter valt analysmått.</p></div><fieldset id="colorMode"><legend>Färg efter</legend><label><input type="radio" name="color" value="priority" checked><i></i>Prioritet</label><label><input type="radio" name="color" value="frequency"><i></i>Plockfrekvens</label><label><input type="radio" name="color" value="weight"><i></i>Vikt</label><label><input type="radio" name="color" value="gap"><i></i>Placement gap</label><label><input type="radio" name="color" value="abc"><i></i>ABC</label></fieldset></div>
+        <div id="warehouseLegend" class="heat-scale"></div>
         <div id="warehouseMap" class="warehouse-map"></div>
       </section>
 

@@ -23,6 +23,7 @@ export function buildRelocationViewModel(analysis, settings = {}) {
         name: article.name ?? "UNKNOWN",
         pickZone: currentLocation.pickZoneType ?? "UNKNOWN",
         currentLocation: currentLocation.locationCode,
+        placementEvidence: recommendation.placementEvidence ?? article.placementEvidence ?? null,
         currentZone: currentLocation.zone,
         currentSection: currentPhysicalPosition?.zoneSection ?? "UNKNOWN",
         currentFloorHeightCm: recommendation.currentShelfHeight?.floorHeightCm ?? null,
@@ -55,4 +56,13 @@ export function buildRelocationViewModel(analysis, settings = {}) {
     .filter((recommendation) => (
       Math.abs(recommendation.placementGap) >= movementThreshold
     )));
+}
+
+export function buildRelocationBundleViewModel(analysis, recommendations) {
+  const byArticle = new Map(recommendations.map((item) => [String(item.articleNumber), item]));
+  return (analysis.relocationBundles ?? []).map((bundle) => {
+    const members = bundle.articleNumbers.map((articleNumber) => byArticle.get(String(articleNumber))).filter(Boolean);
+    if (members.length !== bundle.articleNumbers.length) return null;
+    return { ...bundle, members };
+  }).filter(Boolean);
 }

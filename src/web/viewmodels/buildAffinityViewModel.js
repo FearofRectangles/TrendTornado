@@ -56,7 +56,11 @@ export function buildAffinityViewModel({ analysis, historyRecords, masterArticle
       priorityReason: buildPriorityReason(cluster),
     };
   });
-  const zones = [...new Set(clusters.map((cluster) => cluster.pickZone))].sort();
+  const pickAreaOrder = new Map((settings.warehouse?.pickAreas ?? []).map((area, index) => [area.name, index]));
+  const zones = [...new Set(clusters.map((cluster) => cluster.pickZone))].toSorted((left, right) => (
+    (pickAreaOrder.get(left) ?? Number.MAX_SAFE_INTEGER) - (pickAreaOrder.get(right) ?? Number.MAX_SAFE_INTEGER) ||
+    left.localeCompare(right, "sv")
+  ));
   return {
     clusters,
     zones,

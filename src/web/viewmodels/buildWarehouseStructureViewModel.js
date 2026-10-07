@@ -10,12 +10,14 @@ export function buildWarehouseStructureViewModel(analysis) {
   const statisticsByArticle = new Map(
     analysis.articles.positioned.map((article) => [article.articleNumber, article]),
   );
+  const classificationByArticle = analysis.articles.classification?.byArticle ?? new Map();
   const placementsByLocation = new Map();
   for (const placement of analysis.placements.pickPlacements) {
     const code = placement.location.locationCode;
     if (!placementsByLocation.has(code)) placementsByLocation.set(code, []);
     const evaluation = evaluationByArticle.get(placement.article.articleNumber) ?? null;
     const statistics = statisticsByArticle.get(placement.article.articleNumber) ?? null;
+    const classification = classificationByArticle.get(placement.article.articleNumber) ?? null;
     placementsByLocation.get(code).push({
       articleNumber: placement.article.articleNumber,
       name: placement.article.name,
@@ -23,6 +25,8 @@ export function buildWarehouseStructureViewModel(analysis) {
       pickFrequency: statistics?.pickFrequency ?? 0,
       priorityScore: evaluation?.priorityScore ?? null,
       placementGap: evaluation?.placementGap ?? null,
+      classification: classification?.classification ?? null,
+      abcClass: classification?.abcClass ?? null,
     });
   }
 
@@ -71,6 +75,9 @@ export function buildWarehouseStructureViewModel(analysis) {
         .map((bay) => {
           const articles = bay.locations.flatMap((location) => location.articles);
           const max = (selector) => Math.max(0, ...articles.map(selector).filter(Number.isFinite));
+          const abcClass = ["A", "B", "C"].find((candidate) => (
+            articles.some((article) => article.abcClass === candidate)
+          )) ?? null;
           return {
             ...bay,
             articleCount: articles.length,
@@ -80,6 +87,7 @@ export function buildWarehouseStructureViewModel(analysis) {
               frequency: normalize(max((article) => article.pickFrequency), maximumFrequency),
               weight: normalize(max((article) => article.weightKg), maximumWeight),
               gap: max((article) => Math.abs(article.placementGap ?? 0)),
+              abc: abcClass,
             },
           };
         }),

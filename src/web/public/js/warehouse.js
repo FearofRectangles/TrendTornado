@@ -6,6 +6,7 @@ const zoneDrilldown = document.getElementById("zoneDrilldown");
 const bayDrilldown = document.getElementById("bayDrilldown");
 const bayGrid = document.getElementById("bayGrid");
 const shelfStack = document.getElementById("shelfStack");
+const warehouseLegend = document.getElementById("warehouseLegend");
 let activePickZone = model.pickZones[0]?.name ?? null;
 let colorMode = "priority";
 let activeZone = null;
@@ -20,9 +21,22 @@ function selectedPickZone() {
 
 function heatColor(value, occupied) {
   if (!occupied) return "#eef1ef";
+  if (colorMode === "abc") return { A: "#dff1e4", B: "#fff0d8", C: "#eeeaf7" }[value] ?? "#dfe4e0";
   const lightness = 92 - Math.max(0, Math.min(1, value)) * 48;
   const hue = colorMode === "weight" ? 263 : colorMode === "gap" ? 27 : colorMode === "frequency" ? 205 : 147;
   return `hsl(${hue} 54% ${lightness}%)`;
+}
+
+function metricLabel(value) {
+  if (colorMode === "abc") return value ? `ABC ${value}` : "ABC saknas";
+  return `${colorMode} ${(value * 100).toFixed(0)} %`;
+}
+
+function renderLegend() {
+  warehouseLegend.classList.toggle("abc-scale", colorMode === "abc");
+  warehouseLegend.innerHTML = colorMode === "abc"
+    ? `<span>ABC-klass</span><i class="abc-a"></i><strong>A · hög aktivitet</strong><i class="abc-b"></i><strong>B · medel</strong><i class="abc-c"></i><strong>C · låg</strong><b>Grått · klass saknas eller tomt fack</b>`
+    : `<span>Lågt</span><i></i><i></i><i></i><i></i><i></i><span>Högt</span><b>Tomt fack</b>`;
 }
 
 function renderMap() {
@@ -34,11 +48,12 @@ function renderMap() {
         <span>Zon</span><strong>${escapeHtml(zone.zone)}</strong><small>${zone.bays.length} fack</small><b>Öppna zon ›</b>
       </button>
       <div class="zone-bay-strip">
-        ${zone.bays.map((bay) => `<i style="background:${heatColor(bay.metrics[colorMode], bay.articleCount > 0)}" title="Fack ${escapeHtml(bay.bay)} · ${bay.articleCount} artiklar · ${colorMode} ${(bay.metrics[colorMode] * 100).toFixed(0)} %"></i>`).join("")}
+        ${zone.bays.map((bay) => `<i style="background:${heatColor(bay.metrics[colorMode], bay.articleCount > 0)}" title="Fack ${escapeHtml(bay.bay)} · ${bay.articleCount} artiklar · ${metricLabel(bay.metrics[colorMode])}"></i>`).join("")}
       </div>
     </article>
   `).join("");
   map.querySelectorAll("[data-open-zone]").forEach((button) => button.addEventListener("click", () => openZone(button.dataset.openZone)));
+  renderLegend();
 }
 
 function openZone(zoneCode) {
@@ -74,7 +89,7 @@ function openBay(bayCode) {
       <section class="shelf-row"><div class="shelf-label"><span>Hylla</span><strong>${escapeHtml(shelf)}</strong><small>${locations[0].height ? `${formatCentimeters(locations[0].height.floorHeightCm)} över golv` : "höjd saknas"}</small></div><div class="shelf-locations">
         ${locations.sort((a, b) => a.position.localeCompare(b.position, "sv", { numeric: true })).map((location) => `
           <article class="location-slot ${location.articles.length ? "occupied" : "empty"}"><div><span>${escapeHtml(location.locationCode)}</span><small>Position ${escapeHtml(location.position)}</small></div><div class="location-dimensions"><span>H ${dimension(location.dimensions.heightCm)}</span><span>B ${dimension(location.dimensions.widthCm)}</span><span>D ${dimension(location.dimensions.depthCm)}</span><span>${location.height?.volumeM3 == null ? "Volym —" : `${location.height.volumeM3.toLocaleString("sv-SE", { maximumFractionDigits: 3 })} m³`}</span></div><div class="location-height"><strong>${location.height ? `${formatCentimeters(location.height.floorHeightCm)}–${formatCentimeters(location.height.topHeightCm)}` : "Höjd över golv saknas"}</strong><small>över golv</small></div>
-          ${location.articles.length ? location.articles.map((article) => `<a href="/articles/${encodeURIComponent(article.articleNumber)}"><strong>${escapeHtml(article.articleNumber)}</strong><span>${escapeHtml(article.name)}</span><small>${article.pickFrequency} plock · ${article.weightKg.toLocaleString("sv-SE")} kg</small></a>`).join("") : "<em>Tom plockplats</em>"}</article>
+          ${location.articles.length ? location.articles.map((article) => `<a class="article-abc-${String(article.abcClass ?? "unknown").toLowerCase()}" href="/articles/${encodeURIComponent(article.articleNumber)}"><strong>${escapeHtml(article.articleNumber)}</strong><span>${escapeHtml(article.name)}</span><small>${article.pickFrequency} plock · ${article.weightKg.toLocaleString("sv-SE")} kg</small><b class="slot-abc-badge">${escapeHtml(article.classification ?? "—")}</b></a>`).join("") : "<em>Tom plockplats</em>"}</article>
         `).join("")}
       </div></section>
     `).join("");

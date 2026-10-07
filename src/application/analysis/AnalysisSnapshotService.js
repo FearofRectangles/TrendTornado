@@ -9,9 +9,17 @@ import { configureZoneMappings } from "../../domain/warehouse/zone/ZoneRules.js"
 import { DEFAULT_SETTINGS } from "../../config/DefaultSettings.js";
 import { configureExcludedArticles } from "../../domain/analytics/history/PickHistoryRules.js";
 
-const ALGORITHM_VERSION = "1.0";
+const ALGORITHM_VERSION = "1.4";
 let activeCache = null;
 const derivedCache = new Map();
+
+export class SetupRequiredError extends Error {
+  constructor() {
+    super("TrendTornado behöver konfigureras och få en aktiv analys innan analysvyerna kan öppnas.");
+    this.name = "SetupRequiredError";
+    this.code = "SETUP_REQUIRED";
+  }
+}
 
 export function restoreSnapshotPrototypes(value, visited = new WeakSet()) {
   if (value === null || typeof value !== "object" || visited.has(value)) return value;
@@ -44,16 +52,20 @@ function dateKey(value) {
   return date.toISOString().slice(0, 10);
 }
 
+function localDateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 async function sourceData(settings = null) {
   const activeSettings = settings ?? await SettingsRepository.load();
   configureZoneMappings(activeSettings.warehouse.zoneMappings);
   configureExcludedArticles(activeSettings.articleRules.filter((rule) => rule.excludeFromAnalysis).map((rule) => rule.articleNumber));
   const files = await DataSourceRegistry.activePaths();
   const data = await WarehouseDataLoader.load({
-    historyPath: files.history,
     articlePath: files.articles,
     locationPath: files.locations,
     placementPath: files.placements,
+    movementPath: files.movements,
   });
   const sourceManifest = (await DataSourceRegistry.list()).filter((source) => source.status === "ACTIVE").map((source) => ({
     id: source.id,
@@ -83,17 +95,23 @@ export class AnalysisSnapshotService {
     try {
       const data = await sourceData(usedSettings);
       const historyRecords = data.historyRecords.filter((record) => {
-        const key = record.postingDate.toISOString().slice(0, 10);
+        const key = localDateKey(record.postingDate);
+        return key >= start && key <= end;
+      });
+      const movementRecords = data.movementRecords.filter((record) => {
+        const key = localDateKey(record.occurredAt);
         return key >= start && key <= end;
       });
       if (historyRecords.length === 0) throw new Error("Datumintervallet innehåller inga giltiga plockrader.");
       const snapshotData = {
         ...data,
         historyRecords,
+        movementRecords,
         importSummary: { ...data.importSummary, validHistoryRecords: historyRecords.length },
       };
       const analysis = WarehouseAnalysisService.analyze({
         historyRecords,
+        movementRecords,
         articles: data.articles,
         locations: data.locations,
         placementRecords: data.placementRecords,
@@ -114,20 +132,11 @@ export class AnalysisSnapshotService {
     }
   }
 
-  static async getActive() {
+  static async getActive({ allowMissing = false } = {}) {
     const stored = await AnalysisSnapshotRepository.getActive();
     if (!stored) {
-      const initialSettings = await SettingsRepository.load();
-      const data = await sourceData(initialSettings);
-      const dates = data.historyRecords.map((record) => record.postingDate).sort((a, b) => a - b);
-      await this.create({
-        name: "Grundanalys",
-        periodStart: dates[0],
-        periodEnd: dates.at(-1),
-        settings: initialSettings,
-        activate: true,
-      });
-      return this.getActive();
+      if (allowMissing) return null;
+      throw new SetupRequiredError();
     }
     configureZoneMappings(stored.settings.warehouse?.zoneMappings ?? DEFAULT_SETTINGS.warehouse.zoneMappings);
     if (activeCache?.id === stored.id) {

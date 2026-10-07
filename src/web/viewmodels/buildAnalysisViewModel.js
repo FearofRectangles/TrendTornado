@@ -110,6 +110,11 @@ export function buildAnalysisViewModel(analysis) {
       diagnostics: analysis.simulation.diagnostics,
       coverage: analysis.simulation.coverage,
       improvedWeightPairs: optimized.correctlyOrderedPairs - baseline.correctlyOrderedPairs,
+      dataCoverage: analysis.dataCoverage ?? {
+        placement: { snapshotCoverage: 0, resolvedCoverage: 0, snapshotArticles: 0, wmsObservedArticles: 0, unknownArticles: 0 },
+        movementLocation: { coverage: 0, resolvedRecords: 0, records: 0 },
+        weight: { coverage: 0, validRecords: 0, records: 0 },
+      },
     },
     classification: {
       observedWeeks: classificationResult?.observedWeeks ?? [],

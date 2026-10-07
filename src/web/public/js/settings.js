@@ -46,7 +46,7 @@ const articleRuleRows = document.getElementById("articleRuleRows");
 document.getElementById("addArticleRule")?.addEventListener("click", () => {
   const row = document.createElement("div");
   row.className = "article-rule-row";
-  row.innerHTML = `<input name="articleNumber" type="text" placeholder="Artikelnummer" required><select name="ruleMode"><option value="ANALYSIS">Exkludera från analys och statistik</option><option value="RELOCATION">Dölj endast som flyttkandidat</option><option value="BOTH">Båda</option></select><button class="remove-article-rule" type="button" aria-label="Ta bort artikelundantag">×</button>`;
+  row.innerHTML = `<input name="articleNumber" type="text" placeholder="Artikelnummer" required><span class="article-rule-name">Beskrivningen visas efter att regeln sparats</span><select name="ruleMode"><option value="ANALYSIS">Exkludera från analys och statistik</option><option value="RELOCATION">Dölj endast som flyttkandidat</option><option value="BOTH">Båda</option></select><button class="remove-article-rule" type="button" aria-label="Ta bort artikelundantag">×</button>`;
   articleRuleRows.append(row);
   row.querySelector("input").focus();
 });

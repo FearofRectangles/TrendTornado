@@ -1,4 +1,7 @@
 let rows = [...document.querySelectorAll(".work-row")];
+const relocationBundles = JSON.parse(document.getElementById("bundleData")?.textContent ?? "[]");
+const bundleArticles = new Map(relocationBundles.flatMap((bundle) => bundle.articleNumbers.map((articleNumber) => [String(articleNumber), bundle.articleNumbers.map(String)])));
+const bundleById = new Map(relocationBundles.map((bundle) => [String(bundle.id), bundle]));
 const controls = {
   pickZone: document.getElementById("pickZoneFilter"),
   direction: document.getElementById("relocationDirectionFilter"),
@@ -53,11 +56,11 @@ function filteredRows() {
   const search = controls.search.value.trim().toLowerCase();
   return rows.filter((row) => (
     (controls.pickZone.value === "" || row.dataset.pickZone === controls.pickZone.value) &&
-    (controls.direction.value === "" || row.dataset.direction === controls.direction.value) &&
-    (controls.ergonomic.value === "" || row.dataset.ergonomic === controls.ergonomic.value) &&
-    (controls.classification.value === "" || row.dataset.classification === controls.classification.value) &&
-    (controls.currentZone.value === "" || row.dataset.currentZone === controls.currentZone.value) &&
-    (controls.recommendedZone.value === "" || row.dataset.recommendedZone === controls.recommendedZone.value) &&
+    (controls.direction.value === "" || row.dataset.direction.split(" ").includes(controls.direction.value)) &&
+    (controls.ergonomic.value === "" || row.dataset.ergonomic.split(" ").includes(controls.ergonomic.value)) &&
+    (controls.classification.value === "" || row.dataset.classification.split(" ").includes(controls.classification.value)) &&
+    (controls.currentZone.value === "" || row.dataset.currentZone.split("|").includes(controls.currentZone.value)) &&
+    (controls.recommendedZone.value === "" || row.dataset.recommendedZone.split("|").includes(controls.recommendedZone.value)) &&
     Number(row.dataset.gap) >= Number(controls.minimumGap.value) &&
     Number(row.dataset.utility) >= Number(controls.minimumUtility.value) &&
     (search === "" || row.dataset.search.includes(search))
@@ -96,6 +99,18 @@ function ergonomicLabel(value) {
   if (value === "LOW_STRONGLY_RECOMMENDED") return "Låg rekommenderas";
   if (value === "LOW_PREFERRED") return "Låg föredras";
   return "Flexibel placering";
+}
+
+function placementEvidenceLabel(evidence) {
+  if (evidence?.source === "PLACEMENT_SNAPSHOT") return "Aktuell placeringssnapshot · hög konfidens";
+  if (evidence?.source === "WMS_HISTORY") {
+    const observedAt = evidence.observedAt ? new Date(evidence.observedAt) : null;
+    const observed = observedAt && !Number.isNaN(observedAt.getTime())
+      ? observedAt.toLocaleString("sv-SE", { dateStyle: "medium", timeStyle: "short" })
+      : "okänd tidpunkt";
+    return `Senast observerad i WMS ${observed} · medelkonfidens`;
+  }
+  return "Placeringsunderlag saknas";
 }
 
 function pickStopRate(totalStops, observedWeeks) {
@@ -167,7 +182,7 @@ async function openDrawer(articleNumber, sourceRow) {
     <h2 id="drawerTitle">${escapeHtml(item.articleNumber)}</h2>
     <p class="drawer-name">${escapeHtml(item.name)}</p>
     <div class="drawer-route">
-      <section><span>Nu</span><strong>${escapeHtml(item.currentZone)} · ${escapeHtml(item.currentSection)}</strong><small>Position ${number.format(item.currentPosition * 100)} %</small></section>
+      <section><span>Nu</span><strong>${escapeHtml(item.currentZone)} · ${escapeHtml(item.currentSection)}</strong><small>Position ${number.format(item.currentPosition * 100)} %</small><small class="drawer-placement-source">${escapeHtml(placementEvidenceLabel(item.placementEvidence))}</small></section>
       <div class="drawer-direction ${earlier ? "earlier" : "later"}">${earlier ? "↑" : "↓"}<small>flytta ${earlier ? "tidigare" : "senare"}</small></div>
       <section class="recommended"><span>Analytiskt målområde</span><strong>${escapeHtml(item.recommendedZone)} · ${escapeHtml(item.recommendedSection)}</strong><small id="targetInterval">Position ${number.format(item.desiredPosition * 100)} %</small></section>
     </div>
@@ -182,6 +197,7 @@ async function openDrawer(articleNumber, sourceRow) {
       <div><span>Höjd över golv</span><strong>${item.currentFloorHeightCm === null ? "Saknas" : `${number.format(item.currentFloorHeightCm)} cm`}</strong></div>
     </div>
     <div class="drawer-ergonomics"><span>Ergonomi</span><strong>${ergonomicLabel(item.ergonomicRecommendation)}</strong><p>${escapeHtml(item.ergonomicReason)}</p></div>
+    ${item.bundle ? `<div class="drawer-bundle-warning"><strong>Flytta endast som paket</strong><p>Den här artikeln hör ihop med ${item.bundle.partnerArticleNumbers.map(escapeHtml).join(", ")}. En ensam flytt kan försämra orderrutten.</p></div>` : ""}
     ${utilityExplanation(item.utility)}
     <div id="placementOptions"><div class="placement-options"><h3>Genomförbara alternativ</h3><p class="option-empty">Beräknade alternativ hämtas…</p></div></div>
   `;
@@ -205,6 +221,37 @@ async function openDrawer(articleNumber, sourceRow) {
     const optionContainer = document.getElementById("placementOptions");
     if (optionContainer) optionContainer.innerHTML = `<div class="placement-options"><h3>Genomförbara alternativ</h3><p class="option-empty">Alternativen kunde inte hämtas just nu.</p></div>`;
   }
+}
+
+function openBundleDrawer(bundleId, sourceRow) {
+  const bundle = bundleById.get(String(bundleId));
+  if (!bundle) return;
+  previouslyFocusedRow = sourceRow;
+  drawerContent.innerHTML = `
+    <div class="drawer-eyebrow">Flyttpaket · ${bundle.members.length} artiklar</div>
+    <h2 id="drawerTitle">${bundle.members.map((member) => escapeHtml(member.articleNumber)).join(" + ")}</h2>
+    <p class="drawer-name">${bundle.members.map((member) => escapeHtml(member.name)).join(" + ")}</p>
+    <div class="bundle-drawer-summary">
+      <div><span>Paketprioritet</span><strong>${number.format(bundle.score)}/100</strong><small>${escapeHtml(bundle.label)}</small></div>
+      <div><span>Affinitet</span><strong>${number.format(bundle.affinity * 100)} %</strong><small>${number.format(bundle.transitionsPerWeek)} övergångar/vecka</small></div>
+      <div><span>Rutteeffekt</span><strong>Kortare plockspann</strong><small>om hela paketet genomförs</small></div>
+    </div>
+    <div class="bundle-drawer-members">
+      ${bundle.members.map((member) => `<section><div><span>${escapeHtml(member.articleNumber)}</span><strong>${escapeHtml(member.name)}</strong></div><div class="bundle-drawer-route"><p><small>NU</small>${escapeHtml(member.currentZone)} · ${escapeHtml(member.currentSection)}<b>${number.format(member.currentPosition * 100)} %</b><em>${escapeHtml(placementEvidenceLabel(member.placementEvidence))}</em></p><i>${member.direction === "EARLIER" ? "↑" : "↓"}</i><p><small>MÅL</small>${escapeHtml(member.recommendedZone)} · ${escapeHtml(member.recommendedSection)}<b>${number.format(member.desiredPosition * 100)} %</b></p></div><footer><span>${escapeHtml(member.classification?.classification ?? "—")}</span><span>${number.format(member.pickedQuantityPerWeek)} enheter/vecka</span><span>${ergonomicLabel(member.ergonomicRecommendation)}</span></footer></section>`).join("")}
+    </div>
+    <div class="drawer-bundle-warning"><strong>Genomför hela paketet</strong><p>${escapeHtml(bundle.reason)}</p></div>
+    <button id="exportOpenBundle" class="drawer-export-bundle" type="button">Exportera paket till PDF</button>
+  `;
+  drawer.classList.add("is-open");
+  drawer.setAttribute("aria-hidden", "false");
+  drawerBackdrop.hidden = false;
+  requestAnimationFrame(() => drawerBackdrop.classList.add("is-visible"));
+  document.body.classList.add("drawer-open");
+  closeDrawerButton.focus();
+  document.getElementById("exportOpenBundle")?.addEventListener("click", () => {
+    exportArticleNumbers.value = bundle.articleNumbers.join(",");
+    exportForm.submit();
+  });
 }
 
 function closeDrawer() {
@@ -240,18 +287,27 @@ sortableHeaders.forEach((header) => header.addEventListener("click", () => {
 exportButton.addEventListener("click", () => {
   const matches = filteredRows();
   if (matches.length === 0) return;
-  exportArticleNumbers.value = matches.map((row) => row.dataset.articleNumber).join(",");
+  const selected = new Set(matches.flatMap((row) => {
+    const bundle = row.dataset.bundleId ? bundleById.get(String(row.dataset.bundleId)) : null;
+    return bundle ? bundle.articleNumbers.map(String) : [row.dataset.articleNumber];
+  }));
+  [...selected].forEach((articleNumber) => (bundleArticles.get(articleNumber) ?? []).forEach((partner) => selected.add(partner)));
+  exportArticleNumbers.value = [...selected].join(",");
   exportForm.submit();
 });
+document.querySelectorAll(".export-bundle").forEach((button) => button.addEventListener("click", () => {
+  exportArticleNumbers.value = button.dataset.articles;
+  exportForm.submit();
+}));
 previousPageButton.addEventListener("click", () => { if (currentPage > 1) { currentPage -= 1; render(); } });
 nextPageButton.addEventListener("click", () => {
   const totalPages = Math.max(1, Math.ceil(filteredRows().length / pageSize));
   if (currentPage < totalPages) { currentPage += 1; render(); }
 });
 rows.forEach((row) => {
-  row.addEventListener("click", () => openDrawer(row.dataset.articleNumber, row));
+  row.addEventListener("click", () => row.dataset.bundleId ? openBundleDrawer(row.dataset.bundleId, row) : openDrawer(row.dataset.articleNumber, row));
   row.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openDrawer(row.dataset.articleNumber, row); }
+    if (event.key === "Enter" || event.key === " ") { event.preventDefault(); row.dataset.bundleId ? openBundleDrawer(row.dataset.bundleId, row) : openDrawer(row.dataset.articleNumber, row); }
   });
 });
 closeDrawerButton.addEventListener("click", closeDrawer);

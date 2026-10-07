@@ -85,6 +85,13 @@ app.listen(PORT, () => {
 
 app.use(
   (error, req, res, next) => {
+    if (error?.code === "SETUP_REQUIRED") {
+      if (req.method === "GET" && req.accepts("html")) {
+        return res.redirect("/settings?setup=1");
+      }
+      return res.status(409).json({ error: error.message, setupUrl: "/settings" });
+    }
+
     console.error(error);
 
     res

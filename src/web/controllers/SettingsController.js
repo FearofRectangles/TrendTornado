@@ -1,15 +1,21 @@
 import { SettingsRepository } from "../../infrastructure/settings/SettingsRepository.js";
 import { AnalysisSnapshotService } from "../../application/analysis/AnalysisSnapshotService.js";
 import { DataSourceRegistry, SourceType } from "../../infrastructure/data/DataSourceRegistry.js";
+import { readCsvFile } from "../../infrastructure/csv/CsvReader.js";
+import { OfficeContext } from "../../config/OfficeContext.js";
 
 function decimal(value) {
   return Number(String(value ?? "").trim().replace(",", "."));
 }
 
 async function loadPageData(settings, snapshotData = null) {
-  const data = snapshotData ?? (await AnalysisSnapshotService.getActive()).data;
   const sources = await DataSourceRegistry.list();
-  const activeHistoryPeriods = sources.filter((source) => source.type === SourceType.HISTORY && source.status === "ACTIVE" && source.periodStart && source.periodEnd);
+  const activeHistoryPeriods = sources.filter((source) => source.type === SourceType.MOVEMENTS && source.status === "ACTIVE" && source.periodStart && source.periodEnd);
+  const requiredSourceTypes = [SourceType.MOVEMENTS, SourceType.ARTICLES, SourceType.LOCATIONS, SourceType.PLACEMENTS];
+  const sourceReadiness = requiredSourceTypes.map((type) => ({
+    type,
+    ready: sources.some((source) => source.type === type && source.status === "ACTIVE"),
+  }));
   const configuredByZone = new Map(settings.warehouse.zoneMappings.map((mapping) => [mapping.physicalZone, mapping]));
   const detectedZones = (await DataSourceRegistry.detectedZones()).map((zone) => {
     const configured = configuredByZone.get(zone.physicalZone);
@@ -23,15 +29,40 @@ async function loadPageData(settings, snapshotData = null) {
     };
   });
 
+  const articleNames = new Map((snapshotData?.articles ?? []).map((article) => [String(article.articleNumber), article.name]));
+  if (articleNames.size === 0) {
+    const articleSource = sources.find((source) => source.type === SourceType.ARTICLES && source.status === "ACTIVE");
+    if (articleSource) {
+      const rows = await readCsvFile(articleSource.storedPath);
+      rows.forEach((row) => articleNames.set(String(row.Nr ?? "").trim(), String(row.Beskrivning ?? "").trim()));
+    }
+  }
+  const articleRules = settings.articleRules.map((rule) => ({
+    ...rule,
+    articleName: articleNames.get(String(rule.articleNumber)) || "Beskrivning saknas i aktiv artikeldata",
+  }));
+
+  const periodStart = activeHistoryPeriods.length
+    ? new Date(activeHistoryPeriods.map((source) => source.periodStart).sort()[0])
+    : snapshotData?.historyRecords?.[0]?.postingDate ?? null;
+  const periodEnd = activeHistoryPeriods.length
+    ? new Date(activeHistoryPeriods.map((source) => source.periodEnd).sort().at(-1))
+    : snapshotData?.historyRecords?.at(-1)?.postingDate ?? null;
+  const zonesReady = detectedZones.length > 0 && detectedZones.every((zone) => zone.configured);
+
   return {
     settings,
+    office: OfficeContext,
     sources,
     zoneProfiles: detectedZones,
     dataSources: sources,
     sourceTypes: SourceType,
-    importSummary: data.importSummary,
-    periodEnd: activeHistoryPeriods.length ? new Date(activeHistoryPeriods.map((source) => source.periodEnd).sort().at(-1)) : data.historyRecords.at(-1)?.postingDate ?? null,
-    periodStart: activeHistoryPeriods.length ? new Date(activeHistoryPeriods.map((source) => source.periodStart).sort()[0]) : data.historyRecords[0]?.postingDate ?? null,
+    articleRules,
+    sourceReadiness,
+    zonesReady,
+    setupReady: sourceReadiness.every((source) => source.ready) && zonesReady && Boolean(periodStart && periodEnd),
+    periodEnd,
+    periodStart,
     analysisRuns: await AnalysisSnapshotService.list(),
   };
 }
@@ -39,10 +70,10 @@ async function loadPageData(settings, snapshotData = null) {
 export class SettingsController {
   static async index(req, res, next) {
     try {
-      const snapshot = await AnalysisSnapshotService.getActive();
-      const page = await loadPageData(await SettingsRepository.load(), snapshot.data);
-      page.analysisRuns = snapshot.runs;
-      const activeAnalysis = snapshot.run;
+      const snapshot = await AnalysisSnapshotService.getActive({ allowMissing: true });
+      const page = await loadPageData(await SettingsRepository.load(), snapshot?.data ?? null);
+      if (snapshot) page.analysisRuns = snapshot.runs;
+      const activeAnalysis = snapshot?.run ?? null;
       res.render("settings", {
         title: "Inställningar",
         ...page,
@@ -59,6 +90,7 @@ export class SettingsController {
         articleRulesSaved: req.query.articleRulesSaved === "1",
         analysisDeleted: req.query.analysisDeleted === "1",
         activeAnalysis,
+        setupMode: !snapshot,
       });
     } catch (error) {
       next(error);
@@ -94,9 +126,9 @@ export class SettingsController {
       res.redirect("/settings?saved=1");
     } catch (error) {
       try {
-        const page = await loadPageData(candidate);
-        const snapshot = await AnalysisSnapshotService.getActive();
-        page.analysisRuns = snapshot.runs;
+        const snapshot = await AnalysisSnapshotService.getActive({ allowMissing: true });
+        const page = await loadPageData(candidate, snapshot?.data ?? null);
+        if (snapshot) page.analysisRuns = snapshot.runs;
         res.status(400).render("settings", {
           title: "Inställningar",
           ...page,
@@ -112,7 +144,8 @@ export class SettingsController {
           pickAreasSaved: false,
           articleRulesSaved: false,
           analysisDeleted: false,
-          activeAnalysis: snapshot.run,
+          activeAnalysis: snapshot?.run ?? null,
+          setupMode: !snapshot,
         });
       } catch (renderError) {
         next(renderError);
