@@ -70,6 +70,8 @@ import {
 import { createPlacementOptionFinder } from "../optimization/PlacementOptionFinder.js";
 import { PickTimeAnalysisEngine } from "./PickTimeAnalysisEngine.js";
 import { RelocationBundleEngine } from "../optimization/RelocationBundleEngine.js";
+import { RelocationImpactEngine } from "../optimization/RelocationImpactEngine.js";
+import { RelocationPackageEngine } from "../optimization/RelocationPackageEngine.js";
 
 
 export class WarehouseAnalysisService {
@@ -531,13 +533,13 @@ const periodEnd =
       pickSequence,
     });
 
+    const observedWeekCount = classification.observedWeekCount;
+    const weeklyQuantityByArticle = new Map(positionedArticles.map((article) => [
+      article.articleNumber,
+      observedWeekCount > 0 ? article.pickedQuantity / observedWeekCount : 0,
+    ]));
     const relocationRecommendations =
       (() => {
-      const observedWeekCount = classification.observedWeekCount;
-      const weeklyQuantityByArticle = new Map(positionedArticles.map((article) => [
-        article.articleNumber,
-        observedWeekCount > 0 ? article.pickedQuantity / observedWeekCount : 0,
-      ]));
       const findPlacementOptions = createPlacementOptionFinder({
         locations,
         placements: resolvedPickPlacements,
@@ -629,6 +631,30 @@ const periodEnd =
             recommendation !== null,
         );
       })();
+
+    const hiddenRelocations = new Set(
+      (activeSettings.articleRules ?? [])
+        .filter((rule) => rule.hideRelocation)
+        .map((rule) => String(rule.articleNumber)),
+    );
+    const impactRecommendations = relocationRecommendations.filter((recommendation) => (
+      recommendation.recommendedArea !== null &&
+      Math.abs(recommendation.evaluation.placementGap) >= movementThreshold &&
+      !hiddenRelocations.has(String(recommendation.article.articleNumber))
+    ));
+    const relocationImpact = RelocationImpactEngine.analyze({
+      historicalOrders,
+      recommendations: impactRecommendations,
+      baselineSimulation,
+      optimizedSimulation,
+      maximumPortfolioSize: 10,
+    });
+    const relocationPackages = RelocationPackageEngine.analyze({
+      historicalOrders,
+      recommendations: impactRecommendations,
+      baselineSimulation,
+      weeklyQuantityByArticle,
+    });
 
     const relocationBundles = RelocationBundleEngine.analyze({
       movementRecords,
@@ -821,6 +847,10 @@ const periodEnd =
         relocationRecommendations,
 
       relocationBundles,
+
+      relocationImpact,
+
+      relocationPackages,
 
       relocationBundleSimulation,
 

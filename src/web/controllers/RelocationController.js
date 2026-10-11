@@ -1,5 +1,6 @@
 import { AnalysisSnapshotService } from "../../application/analysis/AnalysisSnapshotService.js";
 import { RelocationPdfReport } from "../../infrastructure/reports/RelocationPdfReport.js";
+import { RelocationPackagePdfReport } from "../../infrastructure/reports/RelocationPackagePdfReport.js";
 import {
   buildRelocationViewModel,
   buildRelocationBundleViewModel,
@@ -24,6 +25,7 @@ export class RelocationController {
       );
       const recommendations = AnalysisSnapshotService.derived(activeAnalysis.id, "relocations", () => buildRelocationViewModel(analysis, activeAnalysis.settings));
       const bundles = AnalysisSnapshotService.derived(activeAnalysis.id, "relocation-bundles", () => buildRelocationBundleViewModel(analysis, recommendations));
+      const relocationPackages = analysis.relocationPackages?.packages ?? [];
       const bundleByArticle = new Map();
       bundles.forEach((bundle) => bundle.members.forEach((member) => bundleByArticle.set(String(member.articleNumber), bundle)));
       recommendations.forEach((item) => {
@@ -83,6 +85,7 @@ export class RelocationController {
           ? { classification: item.classification.classification }
           : null,
         utility: item.utility,
+        simulatedImpact: item.simulatedImpact,
         bundle: item.bundle,
       }));
       const drawerBundles = visibleBundles.map((bundle) => ({
@@ -105,8 +108,10 @@ export class RelocationController {
           later: later.length,
           ergonomic: ergonomic.length,
           bundles: bundles.length,
+          packages: relocationPackages.length,
         },
         bundles: visibleBundles,
+        relocationPackages,
         bundleSimulation: analysis.relocationBundleSimulation ?? null,
         recommendations: visibleRecommendations.map(({ placementOptions, ...item }) => item),
         workItems,
@@ -146,6 +151,23 @@ export class RelocationController {
       const fileDate = new Date().toISOString().slice(0, 10);
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename="trendtornado-flyttlista-${fileDate}.pdf"`);
+      return res.send(pdf);
+    } catch (error) {
+      return next(error);
+    }
+  }
+
+  static async exportPackagePdf(req, res, next) {
+    try {
+      const { analysis, run } = await AnalysisSnapshotService.getActive();
+      const packageId = String(req.body.packageId ?? "");
+      const packagePlan = (analysis.relocationPackages?.packages ?? [])
+        .find((item) => String(item.id) === packageId);
+      if (!packagePlan) return res.status(404).send("Flyttpaketet finns inte i den aktiva analysen.");
+      const pdf = RelocationPackagePdfReport.create({ packagePlan, analysis: run });
+      const fileDate = new Date().toISOString().slice(0, 10);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="trendtornado-flyttpaket-${fileDate}.pdf"`);
       return res.send(pdf);
     } catch (error) {
       return next(error);

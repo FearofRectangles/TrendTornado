@@ -34,6 +34,7 @@ dashboardRoutes.get("/relocations", RelocationController.index);
 dashboardRoutes.get("/relocations/:view", RelocationController.index);
 dashboardRoutes.get("/api/relocations/:articleNumber/options", RelocationController.placementOptions);
 dashboardRoutes.post("/relocations/export.pdf", RelocationController.exportPdf);
+dashboardRoutes.post("/relocations/packages/export.pdf", RelocationController.exportPackagePdf);
 dashboardRoutes.get("/articles", ArticleController.index);
 dashboardRoutes.post("/articles/export.pdf", ArticleController.exportPdf);
 dashboardRoutes.get("/api/articles/:articleNumber", ArticleController.detail);

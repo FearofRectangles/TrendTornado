@@ -5,6 +5,10 @@ export function buildRelocationViewModel(analysis, settings = {}) {
     analysis.simulation?.movementThreshold ?? 0.20;
   const observedWeekCount = analysis.articles?.classification?.observedWeekCount ?? 0;
   const hiddenRelocations = new Set((settings.articleRules ?? []).filter((rule) => rule.hideRelocation).map((rule) => rule.articleNumber));
+  const impactByArticle = new Map(
+    (analysis.relocationImpact?.individualImpacts ?? [])
+      .map((impact) => [String(impact.articleNumber), impact]),
+  );
   const recommendations = analysis.recommendations
     .filter((recommendation) => recommendation.recommendedArea !== null)
     .filter((recommendation) => !hiddenRelocations.has(recommendation.article.articleNumber))
@@ -49,6 +53,7 @@ export function buildRelocationViewModel(analysis, settings = {}) {
         priorityScore: evaluation.priorityScore,
         classification: analysis.articles?.classification?.byArticle.get(article.articleNumber) ?? null,
         placementOptions: recommendation.placementOptions ?? null,
+        simulatedImpact: impactByArticle.get(String(article.articleNumber)) ?? null,
       };
     });
 

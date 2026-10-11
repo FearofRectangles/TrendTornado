@@ -241,271 +241,40 @@
       <div class="dashboard-grid">
 
 
-        <!-- ========================================= -->
-        <!-- KPI 1: Simulation coverage                -->
-        <!-- ========================================= -->
+        <% const dashboardKpis = [
+          { label: 'Plockstopp per vecka', value: operationalSummary.stopsPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 0 }), unit: '', meta: `Genomsnitt över ${operationalSummary.observedWeekCount} veckor`, description: 'Genomsnittligt antal unika artikelstopp per vecka. Måttet beskriver den återkommande arbetsbelastningen i plocket.', icon: '↯', tone: 'green' },
+          { label: 'Order per vecka', value: operationalSummary.ordersPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 0 }), unit: '', meta: `${operationalSummary.stopsPerOrder.toLocaleString('sv-SE', { maximumFractionDigits: 1 })} stopp per order`, description: 'Genomsnittligt antal utleveransorder per vecka. Stopp per order visar hur många olika artiklar en typisk order kräver.', icon: '▤', tone: 'green' },
+          { label: 'Flerplocksspann idag', value: (operationalSummary.currentMultiPickSpan * 100).toLocaleString('sv-SE', { maximumFractionDigits: 1 }), unit: '%', meta: 'Genomsnitt för order med flera stopp', description: 'Genomsnittlig sträcka mellan första och sista stoppet inom respektive plockområde, uttryckt som andel av områdets plockflöde. Lägre är bättre.', icon: '↔', tone: 'purple' },
+          { label: 'Aktivitet i flyttkandidater', value: (operationalSummary.candidateActivityShare * 100).toLocaleString('sv-SE', { maximumFractionDigits: 1 }), unit: '%', meta: 'Andel av alla plockstopp', description: 'Andel av plockstoppen som hör till artiklar som passerar flyttgränsen. En hög andel betyder att felplacerade artiklar påverkar en stor del av arbetet.', icon: '⇅', tone: 'purple' }
+        ]; %>
+        <% dashboardKpis.forEach((kpi) => { %>
+          <section class="card kpi-card operational-kpi">
+            <div class="card-heading"><span><%= kpi.label %></span><span class="info-icon" tabindex="0" role="note" aria-label="<%= kpi.description %>" data-tooltip="<%= kpi.description %>">i</span></div>
+            <div class="kpi-content">
+              <div><div class="kpi-value"><%= kpi.value %><% if (kpi.unit) { %><small><%= kpi.unit %></small><% } %></div><div class="kpi-meta"><%= kpi.meta %></div></div>
+              <div class="kpi-symbol <%= kpi.tone %>"><%= kpi.icon %></div>
+            </div>
+          </section>
+        <% }) %>
 
-        <section class="card kpi-card">
-
-          <div class="card-heading">
-
-            <span>
-              Simuleringstäckning
-            </span>
-
-            <span class="info-icon">
-              i
-            </span>
-
+        <section class="card zone-workload-card">
+          <div class="zone-workload-heading">
+            <div><span>Verksamhetsbild</span><h2>Belastning per plockområde</h2><p>Aktivitet och hanterad vikt, inte hur många lagerplatser området råkar innehålla.</p></div>
+            <small>Veckosnitt över <%= operationalSummary.observedWeekCount %> veckor</small>
           </div>
-
-
-          <div class="kpi-content">
-
-            <div>
-
-              <div class="kpi-value">
-
-                <%= (
-                  simulation.flowCoverage *
-                  100
-                ).toFixed(1) %>
-
-                <small>
-                  %
-                </small>
-
-              </div>
-
-
-              <div class="kpi-meta">
-
-                <%= simulation
-                  .includedRecords
-                  .toLocaleString(
-                    "sv-SE"
-                  )
-                %>
-
-                av
-
-                <%= simulation
-                  .historicalRecords
-                  .toLocaleString(
-                    "sv-SE"
-                  )
-                %>
-
-                historiska plock
-
-              </div>
-
-            </div>
-
-
-            <div class="kpi-symbol green">
-              ◫
-            </div>
-
+          <div class="zone-workload-grid">
+            <% pickZones.forEach((zone) => { %>
+              <article style="--pick-area-color:<%= zone.color %>">
+                <header><span class="pickzone-color has-pick-area-color"></span><strong><%= zone.name %></strong></header>
+                <dl>
+                  <div><dt>Stopp/vecka</dt><dd><%= zone.stopsPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 0 }) %></dd></div>
+                  <div><dt>Åtgång/vecka</dt><dd><%= zone.quantityPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 0 }) %></dd></div>
+                  <div><dt>Hanterad vikt/vecka</dt><dd><%= zone.handledWeightPerWeek.toLocaleString('sv-SE', { maximumFractionDigits: 0 }) %> kg</dd></div>
+                  <div><dt>Kandidataktivitet</dt><dd><%= (zone.candidateActivityShare * 100).toFixed(1) %> %</dd></div>
+                </dl>
+              </article>
+            <% }) %>
           </div>
-
-        </section>
-
-
-
-        <!-- ========================================= -->
-        <!-- KPI 2                                     -->
-        <!-- ========================================= -->
-
-        <section class="card kpi-card">
-
-          <div class="card-heading">
-
-            <span>
-              Artiklar analyserade
-            </span>
-
-            <span class="info-icon">
-              i
-            </span>
-
-          </div>
-
-
-          <div class="kpi-content">
-
-            <div>
-
-              <div class="kpi-value">
-
-                <%= summary
-                  .analyzedArticles
-                  .toLocaleString(
-                    "sv-SE"
-                  )
-                %>
-
-              </div>
-
-
-              <div class="kpi-meta">
-
-                <%= summary
-                  .evaluatedArticles
-                  .toLocaleString(
-                    "sv-SE"
-                  )
-                %>
-
-                utvärderade
-
-              </div>
-
-            </div>
-
-
-            <div class="kpi-symbol green">
-              ◇
-            </div>
-
-          </div>
-
-        </section>
-
-
-
-        <!-- ========================================= -->
-        <!-- KPI 3                                     -->
-        <!-- ========================================= -->
-
-        <section class="card kpi-card">
-
-          <div class="card-heading">
-
-            <span>
-              Flyttkandidater
-            </span>
-
-            <span class="info-icon">
-              i
-            </span>
-
-          </div>
-
-
-          <div class="kpi-content">
-
-            <div>
-
-              <div class="kpi-value">
-
-                <%= summary
-                  .relocationCandidates
-                  .toLocaleString(
-                    "sv-SE"
-                  )
-                %>
-
-              </div>
-
-
-              <div class="kpi-meta">
-
-                gap ≥
-
-                <%= (
-                  strongGapThreshold *
-                  100
-                ).toFixed(0) %>
-
-                %
-
-              </div>
-
-            </div>
-
-
-            <div class="kpi-symbol purple">
-              ⇅
-            </div>
-
-          </div>
-
-        </section>
-
-
-
-        <!-- ========================================= -->
-        <!-- Pick zone distribution                    -->
-        <!-- ========================================= -->
-
-        <section class="card pickzone-card">
-
-          <h2>
-            Fördelning per plockzon
-          </h2>
-
-
-          <div class="pickzone-content">
-
-            <div class="donut-placeholder">
-
-              <div class="donut-inner">
-              </div>
-
-            </div>
-
-
-            <div class="pickzone-list">
-
-              <% pickZones.forEach(
-                (zone) => {
-              %>
-
-                <div class="pickzone-row">
-
-                  <span
-                    class="
-                      pickzone-color
-                      has-pick-area-color
-                    "
-                    style="--pick-area-color: <%= zone.color %>"
-                  >
-                  </span>
-
-                  <span>
-                    <%= zone.name %>
-                  </span>
-
-                  <strong>
-
-                    <%= zone.count
-                      .toLocaleString(
-                        "sv-SE"
-                      )
-                    %>
-
-                  </strong>
-
-                  <span class="muted">
-
-                    (
-                    <%= (
-                      zone.percentage *
-                      100
-                    ).toFixed(1) %>%
-                    )
-
-                  </span>
-
-                </div>
-
-              <% }) %>
-
-            </div>
-
-          </div>
-
         </section>
 
 
@@ -516,6 +285,40 @@
 
         <section class="card relocation-card">
 
+          <div class="dashboard-packages">
+            <div class="dashboard-packages-heading">
+              <div>
+                <span>Operativa förslag</span>
+                <h2>Rekommenderade flyttpaket</h2>
+                <p>Välj omfattning och öppna en exakt, ordnad flyttplan. Storlekar inom samma plockområde är alternativa.</p>
+              </div>
+              <a href="/relocations?workspace=packages#packages">Visa alla flyttpaket →</a>
+            </div>
+            <% if (packageGroups.length > 0) { %>
+              <div class="dashboard-package-zones">
+                <% packageGroups.forEach((group) => { %>
+                  <article class="dashboard-package-zone" style="--package-color:<%= group.color %>">
+                    <header>
+                      <span class="badge zone-badge has-pick-area-color" style="--pick-area-color:<%= group.color %>"><%= group.pickZone %></span>
+                      <small><%= group.packages.length %> alternativ</small>
+                    </header>
+                    <div>
+                      <% group.packages.forEach((packagePlan) => { %>
+                        <a class="dashboard-package-option <%= packagePlan.recommended ? 'recommended' : '' %>" href="/relocations?workspace=packages&amp;zone=<%= encodeURIComponent(group.pickZone) %>&amp;size=<%= packagePlan.size %>#packages">
+                          <span><%= packagePlan.sizeLabel %><% if (packagePlan.recommended) { %><b>Rekommenderat</b><% } %></span>
+                          <strong><%= packagePlan.steps.length %> flyttar</strong>
+                          <small><%= packagePlan.chainCount %> kedj<%= packagePlan.chainCount === 1 ? 'a' : 'or' %> · spann +<%= (packagePlan.spanImprovement * 100).toFixed(2) %> · vikt +<%= (packagePlan.weightOrderImprovement * 100).toFixed(2) %> p.e.</small>
+                        </a>
+                      <% }) %>
+                    </div>
+                  </article>
+                <% }) %>
+              </div>
+            <% } else { %>
+              <div class="dashboard-package-empty">Skapa en ny analys med algoritmversion 1.8 för att bygga exakta flyttpaket från lediga platser.</div>
+            <% } %>
+          </div>
+
           <div class="table-toolbar">
 
             <div>
@@ -525,14 +328,16 @@
               </h2>
 
               <p>
-                De viktigaste flyttarna först, rangordnade
-                efter samma prioritetspoäng som i Flyttare.
+                De 50 viktigaste flyttarna, rangordnade efter
+                samma prioritetspoäng som i Flyttare.
               </p>
 
             </div>
 
 
             <div class="table-filters">
+
+              <a class="dashboard-all-relocations" href="/relocations">Öppna hela arbetslistan →</a>
 
               <select id="zoneFilter">
 
@@ -997,6 +802,19 @@
                               <small><%= recommendation.recommendedZone %> <%= recommendation.recommendedSection %></small>
                             </div>
 
+                            <% if (recommendation.simulatedImpact) { %>
+                              <div class="inline-detail-metric impact-metric">
+                                <span>Effekt på spann</span>
+                                <strong>+<%= (recommendation.simulatedImpact.spanImprovement * 100).toFixed(2) %> p.e.</strong>
+                                <small><%= recommendation.simulatedImpact.affectedDocuments.toLocaleString('sv-SE') %> berörda order</small>
+                              </div>
+                              <div class="inline-detail-metric impact-metric">
+                                <span>Effekt på viktordning</span>
+                                <strong><%= recommendation.simulatedImpact.weightOrderImprovement >= 0 ? '+' : '' %><%= (recommendation.simulatedImpact.weightOrderImprovement * 100).toFixed(2) %> p.e.</strong>
+                                <small>skugganalys</small>
+                              </div>
+                            <% } %>
+
                           </div>
 
                         </div>
@@ -1057,7 +875,7 @@
         <!-- Calendar                                  -->
         <!-- ========================================= -->
 
-        <section class="card calendar-card">
+        <section class="card calendar-card" hidden>
 
           <div class="card-heading">
 
@@ -1160,7 +978,7 @@
         <!-- Simulated improvement                     -->
         <!-- ========================================= -->
 
-        <section class="card score-history-card simulation-card">
+        <section class="card score-history-card simulation-card" hidden>
 
           <div class="card-heading">
 

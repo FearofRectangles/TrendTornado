@@ -31,6 +31,37 @@ export class DashboardController {
 
       const relocationCandidates =
         buildRelocationViewModel(analysis, activeAnalysis.settings);
+      const dashboardRecommendations = relocationCandidates.slice(0, 50);
+
+      const packageSizeOrder = new Map([["SMALL", 0], ["STANDARD", 1], ["LARGE", 2]]);
+      const packagesByZone = new Map();
+      for (const packagePlan of analysis.relocationPackages?.packages ?? []) {
+        if (!packagesByZone.has(packagePlan.pickZone)) packagesByZone.set(packagePlan.pickZone, []);
+        packagesByZone.get(packagePlan.pickZone).push({
+          ...packagePlan,
+          efficiency: packagePlan.steps.length > 0
+            ? packagePlan.objectiveGain / packagePlan.steps.length
+            : 0,
+        });
+      }
+      const pickAreaOrder = new Map(configuredPickAreas.map((area, index) => [area.name, index]));
+      const packageGroups = [...packagesByZone].map(([pickZone, packages]) => {
+        const ordered = packages.toSorted((left, right) => (
+          (packageSizeOrder.get(left.size) ?? 99) - (packageSizeOrder.get(right.size) ?? 99)
+        ));
+        const recommended = ordered.toSorted((left, right) => right.efficiency - left.efficiency)[0];
+        return {
+          pickZone,
+          color: pickAreaColors[pickZone] ?? "#78827a",
+          packages: ordered.map((packagePlan) => ({
+            ...packagePlan,
+            recommended: packagePlan.id === recommended?.id,
+          })),
+        };
+      }).toSorted((left, right) => (
+        (pickAreaOrder.get(left.pickZone) ?? 999) - (pickAreaOrder.get(right.pickZone) ?? 999) ||
+        left.pickZone.localeCompare(right.pickZone, "sv")
+      ));
 
 
       // --------------------------------------------------
@@ -39,6 +70,10 @@ export class DashboardController {
 
       const strongGapThreshold =
         analysis.simulation.movementThreshold;
+
+      const positionDeviations = analysis.evaluations.all.filter((evaluation) => (
+        Math.abs(evaluation.placementGap) >= strongGapThreshold
+      )).length;
 
 
       const lowPlacementRecommendations =
@@ -55,55 +90,70 @@ export class DashboardController {
 
 
       // --------------------------------------------------
-      // Pick zone distribution
+      // Operational dashboard metrics
       // --------------------------------------------------
 
-      const pickZoneDistribution =
-        new Map();
+      const observedWeekCount = Math.max(
+        1,
+        analysis.articles.classification?.observedWeekCount ?? 0,
+      );
+      const candidateArticleNumbers = new Set(
+        relocationCandidates.map((item) => String(item.articleNumber)),
+      );
+      const zoneWorkload = new Map();
+      let totalStops = 0;
+      let totalCandidateStops = 0;
 
-
-      for (
-        const entry
-        of analysis.warehouse
-          .pickSequence
-      ) {
-        const pickZone =
-          entry.pickZoneType;
-
-
-        pickZoneDistribution.set(
-          pickZone,
-
-          (
-            pickZoneDistribution.get(
-              pickZone,
-            ) ?? 0
-          ) + 1,
-        );
+      for (const article of analysis.articles.positioned) {
+        const stops = Number(article.pickFrequency) || 0;
+        totalStops += stops;
+        if (candidateArticleNumbers.has(String(article.articleNumber))) {
+          totalCandidateStops += stops;
+        }
+        const positioned = article.positionedPickLocations?.[0];
+        if (!positioned?.location?.pickZoneType) continue;
+        const name = positioned.location.pickZoneType;
+        const quantity = Number(article.pickedQuantity) || 0;
+        const handledWeight = Number.isFinite(article.weightKg)
+          ? quantity * article.weightKg
+          : 0;
+        const current = zoneWorkload.get(name) ?? {
+          name,
+          stops: 0,
+          quantity: 0,
+          handledWeight: 0,
+          candidateStops: 0,
+        };
+        current.stops += stops;
+        current.quantity += quantity;
+        current.handledWeight += handledWeight;
+        if (candidateArticleNumbers.has(String(article.articleNumber))) {
+          current.candidateStops += stops;
+        }
+        zoneWorkload.set(name, current);
       }
 
+      const pickZones = [...zoneWorkload.values()].map((zone) => ({
+        ...zone,
+        color: pickAreaColors[zone.name] ?? "#78827a",
+        stopsPerWeek: zone.stops / observedWeekCount,
+        quantityPerWeek: zone.quantity / observedWeekCount,
+        handledWeightPerWeek: zone.handledWeight / observedWeekCount,
+        candidateActivityShare: zone.stops > 0 ? zone.candidateStops / zone.stops : 0,
+      })).toSorted((left, right) => (
+        (pickAreaOrder.get(left.name) ?? 999) - (pickAreaOrder.get(right.name) ?? 999) ||
+        left.name.localeCompare(right.name, "sv")
+      ));
 
-      const totalPickLocations =
-        analysis.warehouse
-          .pickSequence.length;
-
-
-      const pickZones = [
-        ...pickZoneDistribution,
-      ].map(
-        ([name, count]) => ({
-          name,
-          color: pickAreaColors[name] ?? "#78827a",
-
-          count,
-
-          percentage:
-            totalPickLocations > 0
-              ? count /
-                totalPickLocations
-              : 0,
-        }),
-      );
+      const totalDocuments = analysis.simulation.diagnostics?.totalDocuments ?? 0;
+      const operationalSummary = {
+        observedWeekCount,
+        stopsPerWeek: totalStops / observedWeekCount,
+        ordersPerWeek: totalDocuments / observedWeekCount,
+        stopsPerOrder: totalDocuments > 0 ? totalStops / totalDocuments : 0,
+        currentMultiPickSpan: analysis.simulation.baseline?.averageMultiPickSpan ?? 0,
+        candidateActivityShare: totalStops > 0 ? totalCandidateStops / totalStops : 0,
+      };
 
 
       // --------------------------------------------------
@@ -381,10 +431,14 @@ export class DashboardController {
             relocationCandidates:
               relocationCandidates.length,
 
+            positionDeviations,
+
             lowPlacementRecommendations:
               lowPlacementRecommendations
                 .length,
           },
+
+          operationalSummary,
 
           simulation:
             simulationSummary,
@@ -395,7 +449,9 @@ export class DashboardController {
             data.importSummary,
 
           recommendations:
-            relocationCandidates,
+            dashboardRecommendations,
+
+          packageGroups,
 
           pickZones,
 

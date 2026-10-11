@@ -49,12 +49,19 @@
         <div class="date-range"><%= period.start.toISOString().slice(0, 10) %><span>–</span><%= period.end.toISOString().slice(0, 10) %></div>
       </header>
 
+      <nav class="relocation-workspace-tabs" aria-label="Flyttvy">
+        <button class="workspace-tab active" type="button" data-workspace="candidates" aria-selected="true">Flyttkandidater</button>
+        <button class="workspace-tab" type="button" data-workspace="packages" aria-selected="false">Flyttpaket <span><%= summary.packages %></span></button>
+      </nav>
+
+      <div id="candidateWorkspace" class="relocation-workspace-panel">
+
       <section class="relocation-summary" aria-label="Sammanfattning">
         <article class="summary-card primary-summary"><span>Flyttkandidater</span><strong><%= summary.total.toLocaleString("sv-SE") %></strong><small>gap ≥ <%= (strongGapThreshold * 100).toFixed(0) %> %</small></article>
         <article class="summary-card"><i class="summary-arrow earlier">↑</i><div><strong><%= summary.earlier.toLocaleString("sv-SE") %></strong><span>tidigare</span></div></article>
         <article class="summary-card"><i class="summary-arrow later">↓</i><div><strong><%= summary.later.toLocaleString("sv-SE") %></strong><span>senare</span></div></article>
         <article class="summary-card ergonomic-summary"><i>♙</i><div><strong><%= summary.ergonomic.toLocaleString("sv-SE") %></strong><span>ergonomiskt prioriterade</span></div></article>
-        <article class="summary-card bundle-summary"><i>⌁</i><div><strong><%= summary.bundles.toLocaleString("sv-SE") %></strong><span>beroende flyttpaket</span></div></article>
+        <article class="summary-card bundle-summary"><i>⌁</i><div><strong><%= summary.bundles.toLocaleString("sv-SE") %></strong><span>affinitetsbundna grupper</span></div></article>
       </section>
 
       <section class="relocation-filters card">
@@ -102,7 +109,7 @@
                 </tr>
               <% } else { const bundle = workItem.bundle; const directions = [...new Set(bundle.members.map((member) => member.direction))]; const ergonomics = [...new Set(bundle.members.map((member) => member.ergonomicRecommendation))]; const classifications = bundle.members.map((member) => member.classification?.classification ?? '').filter(Boolean); const maxGap = Math.max(...bundle.members.map((member) => Math.abs(member.placementGap * 100))); %>
                 <tr class="work-row bundle-work-row" tabindex="0" role="button" data-bundle-id="<%= bundle.id %>" data-article-number="<%= bundle.articleNumbers.join('+') %>" data-name="<%= bundle.members.map((member) => member.name).join(' ').toLowerCase() %>" data-pick-zone="<%= bundle.pickZone %>" data-classification="<%= classifications.join(' ') %>" data-direction="<%= directions.join(' ') %>" data-ergonomic="<%= ergonomics.join(' ') %>" data-current-zone="<%= [...new Set(bundle.members.map((member) => member.currentZone))].join('|') %>" data-recommended-zone="<%= [...new Set(bundle.members.map((member) => member.recommendedZone))].join('|') %>" data-gap="<%= maxGap %>" data-utility="<%= bundle.score %>" data-quantity="<%= bundle.members.reduce((sum, member) => sum + member.pickedQuantityPerWeek, 0) %>" data-search="<%= bundle.members.map((member) => member.articleNumber + ' ' + member.name).join(' ').toLowerCase() %>">
-                  <td><span class="utility-score bundle-utility"><strong><%= bundle.score %></strong><small><%= bundle.label %></small><b>PAKET · <%= bundle.members.length %></b></span></td>
+                  <td><span class="utility-score bundle-utility"><strong><%= bundle.score %></strong><small><%= bundle.label %></small><b>AFFINITET · <%= bundle.members.length %></b></span></td>
                   <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><strong><%= member.articleNumber %></strong></div><% }) %></div></td>
                   <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><span class="work-name"><%= member.name %></span></div><% }) %></div></td>
                   <td><div class="bundle-cell-stack"><% bundle.members.forEach((member) => { %><div><% if (member.classification) { %><span class="badge class-<%= member.classification.abcClass.toLowerCase() %>"><%= member.classification.classification %></span><% } else { %>—<% } %></div><% }) %></div></td>
@@ -121,6 +128,89 @@
         </div>
         <div class="work-pagination"><span id="workPageSummary"></span><div><button id="workPreviousPage" type="button">‹</button><span id="workPageIndicator"></span><button id="workNextPage" type="button">›</button></div></div>
       </section>
+      </div>
+
+      <div id="packageWorkspace" class="relocation-workspace-panel" hidden>
+        <% const packageZones = [...new Set(relocationPackages.map((item) => item.pickZone))]; %>
+        <section class="package-intro card">
+          <div>
+            <span class="package-eyebrow">Exakta och ordnade flyttkedjor</span>
+            <h2>Flyttpaket</h2>
+            <p>Ett paket består av en eller flera konfliktfria kedjor. Varje kedja börjar med en ledig plats och fortsätter genom att återanvända platsen som föregående flytt frigör. Litet, standard och stort är alternativa omfattningar – välj ett paket per plockområde.</p>
+          </div>
+          <div class="package-intro-stats"><strong><%= relocationPackages.length.toLocaleString('sv-SE') %></strong><span>paket i analysen</span></div>
+        </section>
+
+        <section class="package-controls card">
+          <div>
+            <span>Plockområde</span>
+            <div class="package-filter-buttons" id="packageZoneFilters">
+              <button class="active" type="button" data-package-zone="">Alla</button>
+              <% packageZones.forEach((zone) => { %><button type="button" data-package-zone="<%= zone %>" style="--pick-area-color:<%= pickAreaColors[zone] ?? '#78827a' %>"><%= zone %></button><% }) %>
+            </div>
+          </div>
+          <div>
+            <span>Paketstorlek</span>
+            <div class="package-filter-buttons" id="packageSizeFilters">
+              <button class="active" type="button" data-package-size="">Alla</button>
+              <button type="button" data-package-size="SMALL">Litet · upp till 5</button>
+              <button type="button" data-package-size="STANDARD">Standard · upp till 10</button>
+              <button type="button" data-package-size="LARGE">Stort · upp till 20</button>
+            </div>
+          </div>
+        </section>
+
+        <p id="packageResultSummary" class="package-result-summary"></p>
+        <section class="package-grid">
+          <% relocationPackages.forEach((packagePlan) => { %>
+            <article class="relocation-package-card card" data-package-zone="<%= packagePlan.pickZone %>" data-package-size="<%= packagePlan.size %>">
+              <header>
+                <div>
+                  <span class="badge zone-badge has-pick-area-color" style="--pick-area-color:<%= pickAreaColors[packagePlan.pickZone] ?? '#78827a' %>"><%= packagePlan.pickZone %></span>
+                  <small><%= packagePlan.sizeLabel %> paket</small>
+                  <h3><%= packagePlan.steps.length %> flyttar i genomförbar ordning</h3>
+                </div>
+                <div class="package-score"><strong><%= (packagePlan.objectiveGain * 100).toFixed(2).replace('.', ',') %></strong><span>balanserad effekt</span></div>
+              </header>
+              <div class="package-route-summary">
+                <div><span>Start</span><strong><%= packagePlan.chainCount %> flyttkedj<%= packagePlan.chainCount === 1 ? 'a' : 'or' %></strong><small><%= packagePlan.startLocationCodes.length %> ledig<%= packagePlan.startLocationCodes.length === 1 ? '' : 'a' %> startplats<%= packagePlan.startLocationCodes.length === 1 ? '' : 'er' %></small></div>
+                <i>→</i>
+                <div><span>Efter genomförande</span><strong><%= packagePlan.finalFreeLocationCodes.length %> ledig<%= packagePlan.finalFreeLocationCodes.length === 1 ? '' : 'a' %> plats<%= packagePlan.finalFreeLocationCodes.length === 1 ? '' : 'er' %></strong><small>sista: <%= packagePlan.finalFreeLocationCode %></small></div>
+                <div><span>Flerplocksspann</span><strong>+<%= (packagePlan.spanImprovement * 100).toFixed(2) %> p.e.</strong></div>
+                <div><span>Viktordning</span><strong>+<%= (packagePlan.weightOrderImprovement * 100).toFixed(2) %> p.e.</strong></div>
+              </div>
+              <details>
+                <summary>Visa flyttordning</summary>
+                <div class="package-step-table-wrap">
+                  <table class="package-step-table">
+                    <thead><tr><th>Steg</th><th>Artikel</th><th>Från</th><th>Till</th><th>Åtgärd</th><th>Kapacitet</th></tr></thead>
+                    <tbody>
+                      <% packagePlan.steps.forEach((step) => { %>
+                        <tr>
+                          <td><b><%= step.step %></b></td>
+                          <td><strong><%= step.articleNumber %></strong><small><%= step.name %></small></td>
+                          <td><%= step.fromLocationCode %></td>
+                          <td><%= step.toLocationCode %></td>
+                          <td><%= step.actionType === 'EMPTY_LOCATION' ? `Starta kedja ${step.chainNumber} i ledig plats` : `Fortsätt kedja ${step.chainNumber} i frigjord plats` %></td>
+                          <td><% if (step.capacity.estimatedDaysOfDemand !== null) { %><strong><%= step.capacity.estimatedDaysOfDemand.toLocaleString('sv-SE', { maximumFractionDigits: 1 }) %> dagar</strong><small><%= step.capacity.estimatedCapacity.toLocaleString('sv-SE') %> <%= step.capacity.baseUnit ?? 'enheter' %></small><% } else { %>Ej bedömd<% } %></td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="package-guardrail">Varje steg är geometriskt kontrollerat och får inte försämra flerplocksspann eller viktordning. Kontrollera aktuellt saldo och att platsen fortfarande är ledig före genomförande.</p>
+              </details>
+              <footer>
+                <span>Flyttarna måste utföras i angiven ordning.</span>
+                <button class="export-package" type="button" data-package-id="<%= packagePlan.id %>">Exportera paket till PDF</button>
+              </footer>
+            </article>
+          <% }) %>
+        </section>
+        <% if (relocationPackages.length === 0) { %>
+          <section class="package-empty card"><h3>Inga flyttkedjor i den aktiva analysen</h3><p>Skapa en ny analys med algoritmversion 1.8. Paket kräver artikelmått, platsmått och minst en lämplig ledig startplats.</p></section>
+        <% } %>
+      </div>
     </main>
   </div>
 
@@ -131,6 +221,7 @@
   </aside>
 
   <form id="relocationExportForm" method="post" action="/relocations/export.pdf" hidden><input id="exportArticleNumbers" name="articleNumbers" type="hidden"></form>
+  <form id="packageExportForm" method="post" action="/relocations/packages/export.pdf" hidden><input id="exportPackageId" name="packageId" type="hidden"></form>
 
   <script id="relocationData" type="application/json"><%- JSON.stringify(drawerRecommendations).replace(/</g, "\\u003c") %></script>
   <script id="bundleData" type="application/json"><%- JSON.stringify(drawerBundles).replace(/</g, "\\u003c") %></script>

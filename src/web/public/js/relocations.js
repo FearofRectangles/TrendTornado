@@ -149,6 +149,28 @@ function utilityExplanation(utility) {
   return `<div class="utility-explanation"><div><span>Flyttprioritet</span><strong>${utility.score}/100</strong><b>${escapeHtml(utility.label)}</b></div>${Object.entries(utility.contributions).map(([key, value]) => `<p><span>${labels[key]}</span><strong>+${value}</strong></p>`).join("")}</div>`;
 }
 
+function simulatedImpactExplanation(impact) {
+  if (!impact) return `<div class="simulated-impact unavailable"><h3>Beräknad flytteffekt</h3><p>Effektmåttet blir tillgängligt när en ny analys har skapats med algoritmversion 1.8.</p></div>`;
+  const signedPoints = (value, betterWhenPositive = true) => {
+    const points = value * 100;
+    const improved = betterWhenPositive ? points >= 0 : points <= 0;
+    return `<strong class="${improved ? "positive" : "negative"}">${points > 0 ? "+" : ""}${number.format(points)} p.e.</strong>`;
+  };
+  const actionLabels = {
+    DIRECT: `Ledig plats ${escapeHtml(impact.targetLocationCode ?? "")}`,
+    BEAM_ADJUSTMENT: `Balkjustering ${number.format(impact.adjustmentCm ?? 0)} cm · ${escapeHtml(impact.targetLocationCode ?? "")}`,
+    SWAP: `Byt med ${escapeHtml(impact.displacedArticle?.articleNumber ?? "annan artikel")} · ${escapeHtml(impact.targetLocationCode ?? "")}`,
+    THEORETICAL: "Teoretisk målposition · ej fysiskt verifierad",
+  };
+  const capacityText = impact.capacity?.estimatedDaysOfDemand === null || impact.capacity?.estimatedDaysOfDemand === undefined
+    ? ""
+    : ` · cirka ${number.format(impact.capacity.estimatedDaysOfDemand)} dagars uppskattad kapacitet`;
+  const verificationText = impact.operational
+    ? `Geometriskt platsalternativ${capacityText}. Positivt värde betyder förbättring.`
+    : "Artikeldimensioner saknas i den aktiva importen. Effekten visar därför analysens målposition, inte en verifierad slutplats.";
+  return `<div class="simulated-impact${impact.operational ? "" : " theoretical"}"><div><h3>Beräknad flytteffekt</h3><span>${actionLabels[impact.actionType] ?? actionLabels.THEORETICAL}</span></div><section><p><span>Flerplocksspann</span>${signedPoints(impact.spanImprovement)}</p><p><span>Viktordning</span>${signedPoints(impact.weightOrderImprovement)}</p><p><span>Berörda order</span><strong>${number.format(impact.affectedDocuments)}</strong></p></section><small>${verificationText} Måttet påverkar ännu inte prioritetspoängen.</small></div>`;
+}
+
 function placementOptionCard(option) {
   const action = option.type === "DIRECT"
     ? "Ledig plats"
@@ -198,6 +220,7 @@ async function openDrawer(articleNumber, sourceRow) {
     </div>
     <div class="drawer-ergonomics"><span>Ergonomi</span><strong>${ergonomicLabel(item.ergonomicRecommendation)}</strong><p>${escapeHtml(item.ergonomicReason)}</p></div>
     ${item.bundle ? `<div class="drawer-bundle-warning"><strong>Flytta endast som paket</strong><p>Den här artikeln hör ihop med ${item.bundle.partnerArticleNumbers.map(escapeHtml).join(", ")}. En ensam flytt kan försämra orderrutten.</p></div>` : ""}
+    ${simulatedImpactExplanation(item.simulatedImpact)}
     ${utilityExplanation(item.utility)}
     <div id="placementOptions"><div class="placement-options"><h3>Genomförbara alternativ</h3><p class="option-empty">Beräknade alternativ hämtas…</p></div></div>
   `;
@@ -228,7 +251,7 @@ function openBundleDrawer(bundleId, sourceRow) {
   if (!bundle) return;
   previouslyFocusedRow = sourceRow;
   drawerContent.innerHTML = `
-    <div class="drawer-eyebrow">Flyttpaket · ${bundle.members.length} artiklar</div>
+    <div class="drawer-eyebrow">Affinitetsbunden flytt · ${bundle.members.length} artiklar</div>
     <h2 id="drawerTitle">${bundle.members.map((member) => escapeHtml(member.articleNumber)).join(" + ")}</h2>
     <p class="drawer-name">${bundle.members.map((member) => escapeHtml(member.name)).join(" + ")}</p>
     <div class="bundle-drawer-summary">
@@ -315,3 +338,72 @@ drawerBackdrop.addEventListener("click", closeDrawer);
 document.addEventListener("keydown", (event) => { if (event.key === "Escape" && drawer.classList.contains("is-open")) closeDrawer(); });
 
 render();
+
+const workspaceTabs = [...document.querySelectorAll(".workspace-tab")];
+const candidateWorkspace = document.getElementById("candidateWorkspace");
+const packageWorkspace = document.getElementById("packageWorkspace");
+const packageCards = [...document.querySelectorAll(".relocation-package-card")];
+const packageResultSummary = document.getElementById("packageResultSummary");
+const packageExportForm = document.getElementById("packageExportForm");
+const exportPackageId = document.getElementById("exportPackageId");
+let activePackageZone = "";
+let activePackageSize = "";
+
+function showWorkspace(name, updateHash = true) {
+  const packagesActive = name === "packages";
+  candidateWorkspace.hidden = packagesActive;
+  packageWorkspace.hidden = !packagesActive;
+  workspaceTabs.forEach((tab) => {
+    const active = tab.dataset.workspace === name;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", String(active));
+  });
+  if (updateHash) history.replaceState(null, "", packagesActive ? "#packages" : location.pathname + location.search);
+}
+
+function renderPackages() {
+  let visible = 0;
+  packageCards.forEach((card) => {
+    const matches = (!activePackageZone || card.dataset.packageZone === activePackageZone) &&
+      (!activePackageSize || card.dataset.packageSize === activePackageSize);
+    card.hidden = !matches;
+    if (matches) visible += 1;
+  });
+  if (packageResultSummary) packageResultSummary.textContent = `${number.format(visible)} flyttpaket matchar urvalet`;
+}
+
+workspaceTabs.forEach((tab) => tab.addEventListener("click", () => showWorkspace(tab.dataset.workspace)));
+document.querySelectorAll("[data-package-zone]").forEach((button) => {
+  if (!button.matches("button")) return;
+  button.addEventListener("click", () => {
+    activePackageZone = button.dataset.packageZone;
+    document.querySelectorAll("#packageZoneFilters button").forEach((item) => item.classList.toggle("active", item === button));
+    renderPackages();
+  });
+});
+document.querySelectorAll("#packageSizeFilters button").forEach((button) => button.addEventListener("click", () => {
+  activePackageSize = button.dataset.packageSize;
+  document.querySelectorAll("#packageSizeFilters button").forEach((item) => item.classList.toggle("active", item === button));
+  renderPackages();
+}));
+document.querySelectorAll(".export-package").forEach((button) => button.addEventListener("click", () => {
+  exportPackageId.value = button.dataset.packageId;
+  packageExportForm.submit();
+}));
+
+const packageQuery = new URLSearchParams(location.search);
+activePackageZone = packageQuery.get("zone") ?? "";
+activePackageSize = packageQuery.get("size") ?? "";
+document.querySelectorAll("#packageZoneFilters button").forEach((button) => (
+  button.classList.toggle("active", button.dataset.packageZone === activePackageZone)
+));
+document.querySelectorAll("#packageSizeFilters button").forEach((button) => (
+  button.classList.toggle("active", button.dataset.packageSize === activePackageSize)
+));
+showWorkspace(
+  packageQuery.get("workspace") === "packages" || location.hash === "#packages"
+    ? "packages"
+    : "candidates",
+  false,
+);
+renderPackages();

@@ -7,7 +7,14 @@ function buildBins(values, definitions) {
   }));
 }
 
-export function buildAnalysisViewModel(analysis) {
+function percentile(values, fraction) {
+  if (values.length === 0) return 0;
+  const ordered = values.toSorted((left, right) => left - right);
+  const index = Math.min(ordered.length - 1, Math.max(0, Math.ceil(ordered.length * fraction) - 1));
+  return ordered[index];
+}
+
+export function buildAnalysisViewModel(analysis, affinityModel = null, pickAreaPresentation = {}) {
   const sourceCoverage = analysis.dataCoverage ?? {};
   const simulationDiagnostics = analysis.simulation.diagnostics ?? {};
   const totalSimulationRecords = simulationDiagnostics.totalRecords ?? 0;
@@ -88,6 +95,113 @@ export function buildAnalysisViewModel(analysis) {
     item.classification === "CZ" &&
     (evaluationByArticle.get(item.articleNumber)?.currentPosition ?? 1) <= 0.25
   )).length;
+  const orderSpans = (baseline?.orderSimulations ?? [])
+    .filter((order) => order.pickCount >= 2)
+    .map((order) => order.pickSpan)
+    .filter(Number.isFinite);
+  const spanBins = buildBins(orderSpans, [
+    { label: "0–20 %", minimum: 0, maximum: 0.2 },
+    { label: "20–40 %", minimum: 0.2, maximum: 0.4 },
+    { label: "40–60 %", minimum: 0.4, maximum: 0.6 },
+    { label: "60–80 %", minimum: 0.6, maximum: 0.8 },
+    { label: "80–100 %", minimum: 0.8, maximum: Number.POSITIVE_INFINITY },
+  ]);
+  const totalEvaluationActivity = evaluations.reduce((sum, item) => (
+    sum + (articlesByNumber.get(item.articleNumber)?.pickFrequency ?? 0)
+  ), 0);
+  const candidateEvaluations = evaluations.filter((item) => (
+    Math.abs(item.placementGap) >= analysis.simulation.movementThreshold
+  ));
+  const candidateActivity = candidateEvaluations.reduce((sum, item) => (
+    sum + (articlesByNumber.get(item.articleNumber)?.pickFrequency ?? 0)
+  ), 0);
+  const weightedGapNumerator = evaluations.reduce((sum, item) => {
+    const activity = articlesByNumber.get(item.articleNumber)?.pickFrequency ?? 0;
+    return sum + Math.abs(item.placementGap) * activity;
+  }, 0);
+  const ergonomicSegments = Array.from({ length: 10 }, (_, index) => ({
+    index: index + 1,
+    label: `${index * 10}–${(index + 1) * 10} %`,
+    handledWeight: 0,
+    stops: 0,
+  }));
+  const ergonomicSegmentsByZone = new Map();
+  evaluations.forEach((evaluation) => {
+    const article = articlesByNumber.get(evaluation.articleNumber);
+    const segmentIndex = Math.min(9, Math.max(0, Math.floor(evaluation.currentPosition * 10)));
+    const stops = article?.pickFrequency ?? 0;
+    const handledWeight = Number.isFinite(article?.weightKg)
+      ? (article.pickedQuantity ?? 0) * article.weightKg
+      : 0;
+    ergonomicSegments[segmentIndex].stops += stops;
+    ergonomicSegments[segmentIndex].handledWeight += handledWeight;
+    const pickZone = article?.positionedPickLocations?.[0]?.location?.pickZoneType;
+    if (!pickZone) return;
+    if (!ergonomicSegmentsByZone.has(pickZone)) {
+      ergonomicSegmentsByZone.set(pickZone, Array.from({ length: 10 }, (_, index) => ({
+        index: index + 1,
+        label: `${index * 10}–${(index + 1) * 10} %`,
+        handledWeight: 0,
+        stops: 0,
+      })));
+    }
+    ergonomicSegmentsByZone.get(pickZone)[segmentIndex].stops += stops;
+    ergonomicSegmentsByZone.get(pickZone)[segmentIndex].handledWeight += handledWeight;
+  });
+  const totalHandledWeight = ergonomicSegments.reduce((sum, segment) => sum + segment.handledWeight, 0);
+  const lateHandledWeight = ergonomicSegments.slice(7).reduce((sum, segment) => sum + segment.handledWeight, 0);
+  const flowZones = [...ergonomicSegmentsByZone].map(([name, segments]) => {
+    const zoneWeight = segments.reduce((sum, segment) => sum + segment.handledWeight, 0);
+    const lateWeight = segments.slice(7).reduce((sum, segment) => sum + segment.handledWeight, 0);
+    return {
+      name,
+      color: pickAreaPresentation[name]?.color ?? "#16824a",
+      order: pickAreaPresentation[name]?.order ?? Number.MAX_SAFE_INTEGER,
+      segments,
+      totalHandledWeight: zoneWeight,
+      lateHandledWeightShare: zoneWeight > 0 ? lateWeight / zoneWeight : 0,
+      maximumSegmentWeight: Math.max(1, ...segments.map((segment) => segment.handledWeight)),
+    };
+  }).toSorted((left, right) => left.order - right.order || left.name.localeCompare(right.name, "sv"));
+  const articlesWithDimensions = analysis.articles.positioned.filter((article) => (
+    Number.isFinite(article.heightCm) && Number.isFinite(article.widthCm) && Number.isFinite(article.depthCm)
+  )).length;
+  const operationalPortfolio = analysis.relocationImpact?.portfolio ?? {};
+  const packageSummary = ["SMALL", "STANDARD", "LARGE"].map((size) => {
+    const packages = (analysis.relocationPackages?.packages ?? []).filter((item) => item.size === size);
+    return {
+      size,
+      label: size === "SMALL" ? "Små paket" : size === "STANDARD" ? "Standardpaket" : "Stora paket",
+      packages: packages.length,
+      moves: packages.reduce((sum, item) => sum + item.steps.length, 0),
+      objectiveGain: packages.reduce((sum, item) => sum + item.objectiveGain, 0),
+      spanImprovement: packages.reduce((sum, item) => sum + item.spanImprovement, 0),
+      weightOrderImprovement: packages.reduce((sum, item) => sum + item.weightOrderImprovement, 0),
+    };
+  }).filter((item) => item.packages > 0);
+  const desiredPositionByArticle = new Map(evaluations.map((item) => [
+    String(item.articleNumber),
+    Math.abs(item.placementGap) >= analysis.simulation.movementThreshold
+      ? item.desiredPosition
+      : item.currentPosition,
+  ]));
+  let affinityWeight = 0;
+  let currentAffinityDistance = 0;
+  let projectedAffinityDistance = 0;
+  for (const cluster of affinityModel?.clusters ?? []) {
+    const weight = Math.max(1, cluster.occurrenceCount ?? 0) * Math.max(0.01, cluster.averageAffinity ?? 0);
+    const currentPositions = cluster.articles.map((article) => article.currentPosition).filter(Number.isFinite);
+    if (currentPositions.length < 2) continue;
+    const currentSpread = Math.max(...currentPositions) - Math.min(...currentPositions);
+    const metersPerPosition = currentSpread > 0 ? cluster.estimatedSpreadMeters / currentSpread : 0;
+    const projectedPositions = cluster.articles.map((article) => (
+      desiredPositionByArticle.get(String(article.articleNumber)) ?? article.currentPosition
+    )).filter(Number.isFinite);
+    const projectedSpread = Math.max(...projectedPositions) - Math.min(...projectedPositions);
+    affinityWeight += weight;
+    currentAffinityDistance += cluster.estimatedSpreadMeters * weight;
+    projectedAffinityDistance += projectedSpread * metersPerPosition * weight;
+  }
 
   return {
     frequency: {
@@ -118,6 +232,46 @@ export function buildAnalysisViewModel(analysis) {
         Number.isFinite(item.currentShelfHeight?.floorHeightCm) &&
         item.currentShelfHeight.floorHeightCm > 70
       )).length,
+      flowSegments: ergonomicSegments,
+      flowZones,
+      lateHandledWeightShare: totalHandledWeight > 0 ? lateHandledWeight / totalHandledWeight : 0,
+      totalHandledWeight,
+    },
+    placement: {
+      activityWeightedGap: totalEvaluationActivity > 0 ? weightedGapNumerator / totalEvaluationActivity : 0,
+      candidateActivityShare: totalEvaluationActivity > 0 ? candidateActivity / totalEvaluationActivity : 0,
+      candidates: candidateEvaluations.length,
+      evaluated: evaluations.length,
+    },
+    orderSpan: {
+      bins: spanBins,
+      orders: orderSpans.length,
+      median: percentile(orderSpans, 0.5),
+      p75: percentile(orderSpans, 0.75),
+      p90: percentile(orderSpans, 0.9),
+      veryLargeShare: orderSpans.length > 0
+        ? orderSpans.filter((span) => span >= 0.8).length / orderSpans.length
+        : 0,
+    },
+    capacity: {
+      articlesWithDimensions,
+      analyzedArticles: analysis.articles.positioned.length,
+      dimensionCoverage: analysis.articles.positioned.length > 0
+        ? articlesWithDimensions / analysis.articles.positioned.length
+        : 0,
+      operationalCandidates: operationalPortfolio.operationalCandidateCount ?? 0,
+      theoreticalCandidates: operationalPortfolio.theoreticalCandidateCount ?? 0,
+      missingDimensions: operationalPortfolio.missingDimensionCandidateCount ?? 0,
+      noFeasibleLocation: operationalPortfolio.noFeasibleLocationCandidateCount ?? 0,
+      packageSummary,
+    },
+    affinity: {
+      clusters: affinityModel?.summary?.clusters ?? 0,
+      currentWeightedDistanceMeters: affinityWeight > 0 ? currentAffinityDistance / affinityWeight : 0,
+      projectedWeightedDistanceMeters: affinityWeight > 0 ? projectedAffinityDistance / affinityWeight : 0,
+      improvement: currentAffinityDistance > 0
+        ? (currentAffinityDistance - projectedAffinityDistance) / currentAffinityDistance
+        : 0,
     },
     simulation: {
       baseline,
