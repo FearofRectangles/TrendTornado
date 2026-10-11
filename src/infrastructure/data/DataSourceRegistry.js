@@ -44,6 +44,20 @@ function db() {
     );
     CREATE INDEX IF NOT EXISTS data_sources_type_status_idx ON data_sources(source_type, status);
   `);
+  const columns = new Set(
+    database.prepare("PRAGMA table_info(data_sources)").all().map((column) => column.name),
+  );
+  const migrations = [
+    ["warehouse_id", "ALTER TABLE data_sources ADD COLUMN warehouse_id TEXT NOT NULL DEFAULT 'default'"],
+    ["row_count", "ALTER TABLE data_sources ADD COLUMN row_count INTEGER NOT NULL DEFAULT 0"],
+    ["period_start", "ALTER TABLE data_sources ADD COLUMN period_start TEXT"],
+    ["period_end", "ALTER TABLE data_sources ADD COLUMN period_end TEXT"],
+    ["validation_json", "ALTER TABLE data_sources ADD COLUMN validation_json TEXT NOT NULL DEFAULT '{}'"],
+    ["is_managed", "ALTER TABLE data_sources ADD COLUMN is_managed INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [column, statement] of migrations) {
+    if (!columns.has(column)) database.exec(statement);
+  }
   if (OfficeContext.id === "KALMAR") {
     database.prepare("UPDATE data_sources SET warehouse_id = ? WHERE warehouse_id = 'default'").run(OfficeContext.id);
   }
@@ -70,6 +84,15 @@ const requiredHeaders = {
 const fromLineByType = { [SourceType.PLACEMENTS]: 2 };
 const sha256 = (buffer) => createHash("sha256").update(buffer).digest("hex");
 
+function storedValidation(value) {
+  try {
+    const parsed = JSON.parse(value || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
 function rowToModel(row) {
   return {
     id: row.id,
@@ -84,8 +107,10 @@ function rowToModel(row) {
     periodEnd: row.period_end,
     checksum: row.checksum,
     status: row.status,
-    validation: JSON.parse(row.validation_json),
-    isManaged: Boolean(row.is_managed),
+    validation: storedValidation(row.validation_json),
+    // Replaced legacy sources are removable from the registry even though
+    // their original, deployment-owned file must not be unlinked.
+    isManaged: Boolean(row.is_managed) || row.status !== "ACTIVE",
   };
 }
 
@@ -133,7 +158,13 @@ async function historyOverlapDiagnostics(filePath) {
   const existingPaths = db().prepare("SELECT stored_path FROM data_sources WHERE warehouse_id = ? AND source_type = 'HISTORY' AND status = 'ACTIVE'").all(OfficeContext.id);
   const existingDocuments = new Set();
   for (const source of existingPaths) {
-    const rows = await readCsvFile(source.stored_path);
+    let rows;
+    try {
+      rows = await readCsvFile(source.stored_path);
+    } catch (error) {
+      if (error?.code === "ENOENT") continue;
+      throw error;
+    }
     rows.forEach((row) => existingDocuments.add(String(row.Dokumentnr ?? "")));
   }
   const incomingRows = await readCsvFile(filePath);
@@ -155,18 +186,35 @@ export class DataSourceRegistry {
     const count = db().prepare("SELECT COUNT(*) AS count FROM data_sources WHERE warehouse_id = ?").get(OfficeContext.id).count;
     if (count > 0) {
       const incomplete = db().prepare(`
-        SELECT id, source_type, stored_path
+        SELECT id, source_type, stored_path, status, is_managed, validation_json
         FROM data_sources
         WHERE warehouse_id = ? AND status != 'DELETED'
           AND (
             row_count = 0
             OR (source_type = 'MOVEMENTS' AND validation_json NOT LIKE '%\"calendarDatesLocal\":true%')
           )
+          AND validation_json NOT LIKE '%\"missingFile\":true%'
       `).all(OfficeContext.id);
       const update = db().prepare("UPDATE data_sources SET row_count = ?, period_start = ?, period_end = ?, validation_json = ? WHERE id = ? AND warehouse_id = ?");
       for (const source of incomplete) {
-        const validation = await diagnostics(source.stored_path, source.source_type);
-        update.run(validation.rowCount, validation.periodStart, validation.periodEnd, JSON.stringify(validation), source.id, OfficeContext.id);
+        try {
+          const validation = await diagnostics(source.stored_path, source.source_type);
+          update.run(validation.rowCount, validation.periodStart, validation.periodEnd, JSON.stringify(validation), source.id, OfficeContext.id);
+        } catch (error) {
+          if (error?.code !== "ENOENT") throw error;
+          const validation = {
+            ...storedValidation(source.validation_json),
+            missingFile: true,
+            error: "Den registrerade filen finns inte längre på servern.",
+          };
+          if (source.status !== "ACTIVE") {
+            db().prepare("UPDATE data_sources SET status = 'DELETED', validation_json = ? WHERE id = ? AND warehouse_id = ?")
+              .run(JSON.stringify(validation), source.id, OfficeContext.id);
+          } else {
+            db().prepare("UPDATE data_sources SET validation_json = ? WHERE id = ? AND warehouse_id = ?")
+              .run(JSON.stringify(validation), source.id, OfficeContext.id);
+          }
+        }
       }
       return;
     }
@@ -209,7 +257,13 @@ export class DataSourceRegistry {
     await this.ensureBootstrapped();
     const locationSource = db().prepare("SELECT stored_path FROM data_sources WHERE warehouse_id = ? AND source_type = 'LOCATIONS' AND status = 'ACTIVE' ORDER BY imported_at DESC, id DESC LIMIT 1").get(OfficeContext.id);
     if (!locationSource) return [];
-    const rows = await readCsvFile(locationSource.stored_path);
+    let rows;
+    try {
+      rows = await readCsvFile(locationSource.stored_path);
+    } catch (error) {
+      if (error?.code === "ENOENT") return [];
+      throw error;
+    }
     const zones = new Map();
     for (const row of rows) {
       const physicalZone = String(row.Zone ?? row.Lokation?.slice(0, 2) ?? "").padStart(2, "0");
@@ -295,7 +349,14 @@ export class DataSourceRegistry {
     await this.ensureBootstrapped();
     const source = db().prepare("SELECT * FROM data_sources WHERE id = ? AND warehouse_id = ? AND status != 'DELETED'").get(Number(id), OfficeContext.id);
     if (!source) throw new Error("Datakällan finns inte eller är redan borttagen.");
-    if (!source.is_managed) throw new Error("Projektets ursprungliga systemfiler kan inte tas bort härifrån.");
+    if (!source.is_managed) {
+      if (source.status === "ACTIVE") {
+        throw new Error("Den äldre systemfilen måste ersättas innan den kan tas bort ur registret.");
+      }
+      db().prepare("UPDATE data_sources SET status = 'DELETED' WHERE id = ? AND warehouse_id = ?")
+        .run(Number(id), OfficeContext.id);
+      return;
+    }
     if (![SourceType.HISTORY, SourceType.MOVEMENTS].includes(source.source_type) && source.status === "ACTIVE") {
       throw new Error("En aktiv masterdatafil måste ersättas innan den kan tas bort.");
     }

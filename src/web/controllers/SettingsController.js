@@ -33,8 +33,12 @@ async function loadPageData(settings, snapshotData = null) {
   if (articleNames.size === 0) {
     const articleSource = sources.find((source) => source.type === SourceType.ARTICLES && source.status === "ACTIVE");
     if (articleSource) {
-      const rows = await readCsvFile(articleSource.storedPath);
-      rows.forEach((row) => articleNames.set(String(row.Nr ?? "").trim(), String(row.Beskrivning ?? "").trim()));
+      try {
+        const rows = await readCsvFile(articleSource.storedPath);
+        rows.forEach((row) => articleNames.set(String(row.Nr ?? "").trim(), String(row.Beskrivning ?? "").trim()));
+      } catch (error) {
+        if (error?.code !== "ENOENT") throw error;
+      }
     }
   }
   const articleRules = settings.articleRules.map((rule) => ({
